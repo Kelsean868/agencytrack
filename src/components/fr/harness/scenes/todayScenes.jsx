@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- DEV-only harness registry:
    scenes are exported as data (an array of { id, render }), not as components. */
+import ScenePage from '../ScenePage';
 import React, { useMemo } from 'react';
 import FrTodayView from '../../today/FrTodayView';
 import useMinWidth from '../../../../hooks/useMinWidth';
@@ -109,10 +110,10 @@ function TodayScene({ variant }) {
     delivery: <Placeholder label="existing Policies to deliver" className="min-h-[140px]" />,
   };
   return (
-    <main className="mx-auto max-w-[1180px] px-4 py-6 md:px-6">
+    <ScenePage className="mx-auto max-w-[1180px] px-4 py-6 md:px-6">
       <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">SAMPLE · harness</p>
       <FrTodayView model={model} wide={wide} onRetry={noop} onNavigate={noop} onAction={noop} slots={slots} />
-    </main>
+    </ScenePage>
   );
 }
 

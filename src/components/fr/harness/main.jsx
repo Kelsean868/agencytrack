@@ -10,6 +10,7 @@ import '../../../index.css';
 import '@fontsource-variable/bricolage-grotesque/opsz.css';
 import '@fontsource-variable/onest';
 import '../../../styles/fr-look.css';
+import './harness.css';
 import FrHarness from './FrHarness';
 
 createRoot(document.getElementById('root')).render(

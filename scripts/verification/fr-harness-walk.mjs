@@ -26,6 +26,15 @@
  *   npm run dev                                  (in another shell; port 5173)
  *   node scripts/verification/fr-harness-walk.mjs --slice FR-0 [--base http://localhost:5173] [--out <dir>]
  *
+ * Width sweep (docs/briefs/fr-fit-any-width-kickoff.md § W-1) — replaces the
+ * checks above with the five breakage probes (scripts/verification/lib/
+ * fr-width-probes.mjs), every scene inside the REAL app shell (?frame=app),
+ * at 13 window widths × light + dark:
+ *   FR_HARNESS_STUB_FIREBASE=1 npm run dev       (the ledger scenes need the stub)
+ *   node scripts/verification/fr-harness-walk.mjs --sweep [--slice X] [--scene id]
+ *        [--widths 1024,1280] [--shots key|all|none] [--report docs/audits/fr-width-sweep-<date>.md]
+ * Exit 1 when any finding remains.
+ *
  * Exit code 1 when any check fails. Prints a markdown summary table (the
  * evidence paste-back for the PR body). Screenshots go to --out (default: the
  * OS temp dir) — verification artifacts are never committed.
@@ -35,6 +44,7 @@ import { createRequire } from 'node:module';
 import { mkdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
+import { SWEEP_WIDTHS, sweepWidthsFor, sweepScene, sweepReport, writeSweep } from './lib/fr-width-probes.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -366,6 +376,45 @@ async function walkScene(browser, scene, theme, vpName) {
     record(scene.id, 'reduced', vpName, 'reduced motion settles < 60ms', measured > 0 && ok, parts.join(' · ') || 'nothing measured');
     await rctx.close();
   }
+}
+
+if (process.argv.includes('--sweep')) {
+  const widths = arg('widths', null)?.split(',').map(Number) ?? SWEEP_WIDTHS;
+  const shots = arg('shots', 'key');
+  const report = arg('report', null);
+  const sb = await chromium.launch({ executablePath: EXEC_PATH });
+  const findings = [];
+  let scenes = [];
+  try {
+    scenes = await listScenes(sb);
+    if (SLICE !== 'all') scenes = scenes.filter((s) => s.slice === SLICE);
+    if (ONLY) scenes = scenes.filter((s) => ONLY.split(',').includes(s.id));
+    if (scenes.length === 0) throw new Error(`no scenes for slice ${SLICE}`);
+    const titles = await (async () => {
+      const p = await sb.newPage();
+      await p.goto(`${BASE}/fr-harness.html`, { waitUntil: 'networkidle' });
+      const t = await p.$$eval('main li a:first-child', (as) => as.map((a) => [new URL(a.href).searchParams.get('scene'), a.textContent.trim()]));
+      await p.close();
+      return new Map(t);
+    })();
+    for (const scene of scenes) {
+      scene.title = titles.get(scene.id) || scene.id;
+      const ws = sweepWidthsFor(scene, widths);
+      const t0 = Date.now();
+      const f = await sweepScene(sb, { base: BASE, scene, widths: ws, out: OUT, shots });
+      findings.push(...f);
+      console.log(`${f.length ? 'FIND' : 'OK  '} ${scene.id} · ${ws.length} widths · ${f.length} findings · ${Math.round((Date.now() - t0) / 1000)}s`);
+    }
+  } finally {
+    await sb.close();
+  }
+  const stamp = `${new Date().toISOString().slice(0, 16)}Z`;
+  const rep = sweepReport(findings, { scenes, widths, stamp, shotsDir: OUT });
+  writeSweep(OUT, rep, findings);
+  // The committed report never names a local temp path (screenshots stay out of git).
+  if (report) writeFileSync(report, sweepReport(findings, { scenes, widths, stamp, shotsDir: null }).md);
+  console.log(`\n${rep.md}\n\nSweep: ${join(OUT, 'sweep.md')}`);
+  process.exit(rep.rows.length ? 1 : 0);
 }
 
 const browser = await chromium.launch({ executablePath: EXEC_PATH });

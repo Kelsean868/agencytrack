@@ -11,6 +11,11 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 // into a production build (Vite evaluates this file fresh each run; a production
 // `npm run build` has VITEST unset so the plugin list is empty).
 const isTest = !!process.env.VITEST
+// DEV-only opt-in for the FR harness (fr-harness.html): FR_HARNESS_STUB_FIREBASE=1
+// `npm run dev` swaps src/firebase.js for the same inert stub, so harness scenes
+// that import a service module for a constant (e.g. PolicyCard → prospectInfoService)
+// render with no Firebase at all. Never set for a build; unset ⇒ no change.
+const stubFirebase = isTest || process.env.FR_HARNESS_STUB_FIREBASE === '1'
 const stubPath = resolve(__dirname, 'src/__mocks__/firebase.js')
 
 // Custom resolveId plugin — intercepts at the Rollup resolver level (enforce: 'pre')
@@ -23,6 +28,9 @@ const stubPath = resolve(__dirname, 'src/__mocks__/firebase.js')
 const firebaseTestStubPlugin = {
   name: 'firebase-test-stub',
   enforce: 'pre',
+  // The FR harness opt-in is for the dev server ONLY: even with
+  // FR_HARNESS_STUB_FIREBASE=1 set, `vite build` never gets the stub.
+  apply: (_config, { command }) => isTest || command === 'serve',
   resolveId(source) {
     if (/\/firebase$/.test(source)) return stubPath
     return null
@@ -31,7 +39,7 @@ const firebaseTestStubPlugin = {
 
 export default defineConfig({
   plugins: [
-    ...(isTest ? [firebaseTestStubPlugin] : []),
+    ...(stubFirebase ? [firebaseTestStubPlugin] : []),
     react({ jsxRuntime: 'automatic' }),
     VitePWA({
       // 'prompt' (not 'autoUpdate'): the waiting SW genuinely waits for an explicit

@@ -1,5 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { SCENES } from './scenes';
+import { HarnessFrameContext } from './harnessFrame';
+import FrSidebar from '../shell/FrSidebar';
+import { frIconComponent } from '../shell/frIconComponent';
+import { FR_TABBAR, frFlatItems } from '../shell/frNav';
+import MobileBottomNav from '../../shell/MobileBottomNav';
 
 /**
  * FrHarness — DEV-ONLY page that renders FR Views with sample data, no
@@ -9,6 +14,11 @@ import { SCENES } from './scenes';
  *
  * URL: /fr-harness.html                          → index of scenes
  *      /fr-harness.html?scene=<id>&theme=dark    → one scene, light or dark
+ *      …&frame=app                               → the scene inside the real
+ *        app shell (FrSidebar + the phone tab bar), so the view gets the width
+ *        it gets in the app — 220px less at ≥1024, 72px less at 768–1023, the
+ *        whole window below 768 (fr-fit-any-width W-1). Without `frame` the
+ *        scene renders frameless, as before, for the existing walk checks.
  *
  * Every scene can offer two data states (A/B). The "Change data" button
  * (data-testid="fr-harness-change") flips them, which is how
@@ -19,11 +29,50 @@ function readRoute() {
   return {
     sceneId: params.get('scene') || '',
     theme: params.get('theme') === 'dark' ? 'dark' : 'light',
+    frame: params.get('frame') === 'app' ? 'app' : null,
   };
 }
 
+/**
+ * AppFrame — the real FR shell around a scene (W-1 width sweep). Same classes
+ * as Shell.jsx (`.shell` / `.shell-main` / `.shell-content`), so the grid
+ * column widths and content padding are the app's own CSS, not a copy. The
+ * TopBar needs the notification context (Firebase), so a plain header of the
+ * same role stands in for it (as in the FR-1 shell scene). `fr-harness-frame`
+ * lets the page grow to its content height so a full-page screenshot shows the
+ * whole view; widths are untouched.
+ */
+function AppFrame({ title, children }) {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const items = useMemo(() => frFlatItems().map((i) => ({ ...i, Icon: frIconComponent(i.frIcon) })), []);
+  const onBar = new Set(FR_TABBAR.flatMap((b) => [b.tabId, ...(b.matchTabs ?? [])]).filter(Boolean));
+  const drawer = items.filter((i) => !onBar.has(i.tabId));
+  const bottom = FR_TABBAR.map((i) => ({ ...i, Icon: frIconComponent(i.frIcon) }));
+  return (
+    <div className="shell fr-harness-frame" data-harness-frame="app">
+      <FrSidebar
+        activeTab={activeTab}
+        onNavigate={setActiveTab}
+        onAction={() => {}}
+        report={{ done: false, title: 'Weekly report', sub: 'Submit when your week is done' }}
+        user={{ name: '[Agent]', roleLabel: 'Agent' }}
+        onSignOut={() => {}}
+      />
+      <div className="shell-main">
+        <header className="flex min-h-[56px] items-center border-b border-border px-6">
+          <h1 className="min-w-0 truncate font-display text-[20px] font-bold" title={title}>{title}</h1>
+        </header>
+        <main className="shell-content" id="main-content">
+          {children}
+        </main>
+      </div>
+      <MobileBottomNav items={bottom} drawerNavItems={drawer} activeTab={activeTab} setActiveTab={setActiveTab} onAction={() => {}} showPinnedZone={false} />
+    </div>
+  );
+}
+
 export default function FrHarness() {
-  const [{ sceneId, theme }] = useState(readRoute);
+  const [{ sceneId, theme, frame }] = useState(readRoute);
   const [variant, setVariant] = useState('A');
   const scene = useMemo(() => SCENES.find((s) => s.id === sceneId) || null, [sceneId]);
 
@@ -57,8 +106,17 @@ export default function FrHarness() {
   }
 
   const Render = scene.render;
+  // A scene that already draws the shell itself (FR-1) is never framed twice.
+  const framed = frame === 'app' && scene.frame !== false;
+  const body = (
+    <HarnessFrameContext.Provider value={framed}>
+      <div data-scene-root="">
+        <Render variant={variant} />
+      </div>
+    </HarnessFrameContext.Provider>
+  );
   return (
-    <div className="min-h-screen bg-surface font-sans text-ink" data-scene={scene.id} data-variant={variant}>
+    <div className="min-h-screen bg-surface font-sans text-ink" data-scene={scene.id} data-variant={variant} data-frame={framed ? 'app' : 'none'}>
       {scene.hasVariants ? (
         <div className="fixed right-3 top-3 z-50 flex items-center gap-2 rounded-full border border-border bg-card px-2 py-1 shadow-md">
           <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">Sample {variant}</span>
@@ -72,9 +130,7 @@ export default function FrHarness() {
           </button>
         </div>
       ) : null}
-      <div data-scene-root="">
-        <Render variant={variant} />
-      </div>
+      {framed ? <AppFrame title={scene.title}>{body}</AppFrame> : body}
     </div>
   );
 }

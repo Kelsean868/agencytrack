@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- DEV-only harness registry:
    scenes are exported as data (an array of { id, render }), not as components. */
+import ScenePage from '../ScenePage';
 import React, { useMemo } from 'react';
 import FrTrophyRoomView from '../../compete/FrTrophyRoomView';
 import FrCampaignView from '../../compete/FrCampaignView';
@@ -48,10 +49,10 @@ const BOARD = (variant) => {
 
 function Frame({ children }) {
   return (
-    <main className="mx-auto max-w-[1180px] px-4 py-6 md:px-6">
+    <ScenePage className="mx-auto max-w-[1180px] px-4 py-6 md:px-6">
       <p className="mb-2 font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">SAMPLE · harness</p>
       {children}
-    </main>
+    </ScenePage>
   );
 }
 
@@ -240,7 +241,7 @@ function LeaderboardScene({ variant, status = 'ready' }) {
   const aroundMe = computeAroundMe({ ranking: displayedRanking, viewerUid: 'me', visibleMax: VISIBLE_MAX_DESKTOP });
   const mine = standing[field];
   return (
-    <main className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 p-4 sm:p-6">
+    <ScenePage className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 p-4 sm:p-6">
       <p className="font-mono text-[11px] uppercase tracking-[0.08em] text-ink-muted">R2-11 · Leaderboard · SAMPLE</p>
       <FrLeaderboardView
         layout={layout}
@@ -266,7 +267,7 @@ function LeaderboardScene({ variant, status = 'ready' }) {
         mobileYouBar={null}
         onOpenTrophies={() => {}}
       />
-    </main>
+    </ScenePage>
   );
 }
 function LeaderboardStatesScene() {
