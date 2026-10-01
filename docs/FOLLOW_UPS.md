@@ -19,6 +19,7 @@
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
 | Sunday cron weekly drafts go stale: written once at Sun 23:00 TT and never re-aggregated when a day is edited later (staging week 2026-08-23: days 52 pts, draft 39 pts); unit and branch managers get no draft at all (banked 2026-10-01, FR Leaderboard L-1 Phase 1) | MEDIUM | Daily → weekly aggregator | — | see § Sunday cron weekly drafts go stale |
+| Leaderboard month/quarter Activity reads 0 in the first days of a period: a week is placed by its `weekStarting` and never split, so the week that crosses into the new month counts for the old one (seen on staging 1 Oct 2026). Rule kept by Kyron 1 Oct 2026 (banked 2026-10-01, FR Leaderboard L-1) | LOW | Leaderboard / FR | — | see § Leaderboard month-start Activity reads 0 |
 | Leaderboard aggregate takes the load year from the server (UTC) clock, not TT: from TT Dec 31 20:00 to 23:59 it loads the NEXT year's reports and days, so YTD points (and, before L-1, YTD API) collapse for 4 hours (banked 2026-10-01, CodeRabbit on #1045) | LOW | Leaderboard / functions | — | see § Leaderboard aggregate load year uses the UTC clock |
 | `rankForLeaderboard` in `functions/leaderboard/rankingLogic.js` has no runtime caller after FR Leaderboard L-1 (kept only by its cross-check test) (banked 2026-10-01) | LOW | Leaderboard / functions | — | see § rankForLeaderboard has no runtime caller after L-1 |
 | Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
@@ -8327,3 +8328,15 @@ Two more gaps from the same read:
 **Fix shape:** derive the year from the TT YTD window, `Number(periodWindow('ytd', referenceDate).from.slice(0, 4))`, and add a test with a TT Dec 31 22:00 reference and a June report.
 
 **Falsification (Rule 23):** overturned if the scheduled function's runtime timezone is not UTC (`process.env.TZ` set in the functions config).
+
+## Leaderboard month-start Activity reads 0
+
+**Banked 2026-10-01 from FR Leaderboard L-1. Severity: LOW. Rule kept: Kyron, 1 Oct 2026.**
+
+**Observed:** the leaderboard aggregate places a week in a period by its `weekStarting` (Sunday) and never splits it (brief D5; the same rule the weekly-report API used before L-1). The week that crosses into a new month or quarter therefore counts entirely for the old one. On the first days of a month the MTD (and, at a quarter start, QTD) Activity board shows 0 points for everyone, although agents are logging. Staging dry-run on Thu 1 Oct 2026: week 2026-09-27 showed 98 points; MTD and QTD showed 0.
+
+Ledger API and Apps are not affected: they are dated per policy by `dateIssued`.
+
+**Options if this is revisited:** (a) split a week's points by day for days that have daily entries (a submitted report cannot be split); (b) show the current week next to MTD on the board during the first week of a month; (c) leave as is (current ruling).
+
+**Falsification (Rule 23):** overturned if the aggregate is changed to date points per day (`functions/leaderboard/boardMetrics.js`, `metricsFor`).
