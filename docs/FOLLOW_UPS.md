@@ -18,6 +18,8 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| Sunday cron weekly drafts go stale: written once at Sun 23:00 TT and never re-aggregated when a day is edited later (staging week 2026-08-23: days 52 pts, draft 39 pts); unit and branch managers get no draft at all (banked 2026-10-01, FR Leaderboard L-1 Phase 1) | MEDIUM | Daily → weekly aggregator | — | see § Sunday cron weekly drafts go stale |
+| `rankForLeaderboard` in `functions/leaderboard/rankingLogic.js` has no runtime caller after FR Leaderboard L-1 (kept only by its cross-check test) (banked 2026-10-01) | LOW | Leaderboard / functions | — | see § rankForLeaderboard has no runtime caller after L-1 |
 | Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
 | FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
 | Commission playground ladder says "÷ comm · × settle", but API to write divides by the PERSISTENCY rate; settlement feeds nothing shown (Nexus look; the FR port omits the connector text) (banked 2026-09-30, R2-7) | MEDIUM | Commission playground | — | see § Commission playground ladder: the settle label does not match the math |
@@ -3948,6 +3950,8 @@ Phase-1 undercounting: the #296 Phase-1 enumeration audited the photo-map fetch 
 **Priority:** MEDIUM. Deactivated agents appearing in rankings is visible UX noise, not a security issue. No agents have been deactivated in production yet. Not blocking pilot.
 
 Banked: #296 smoke (`27b1c8a`, 2026-05-24).
+
+**UPDATE 2026-10-01 (FR Leaderboard L-1):** the branch aggregate `leaderboards/{branchId}` now leaves out `active === false` users (brief D8, `isParticipant` in `functions/leaderboard/leaderboardAggregate.js`), and so does `weeklyChampions`. This entry stays OPEN: it is about the separate lifetime `leaderboard/{uid}` collection read by `Leaderboard.jsx`, which L-1 does not touch.
 
 ---
 
@@ -8288,3 +8292,27 @@ UPDATE 2026-09-30: Kyron ruling 1A - build it; slice F-3 (brief § 5).
 **Also ruled 30-09-2026 (Kyron 1A):** a producing manager keeps the own-policy status path (Arm B, acting as an agent) even on a head-office policy. Not a gap; do not close it.
 
 **Falsification (Rule 23):** closed without a build if the Lapse tab already excludes head-office policies by some other filter (check the list derivation first).
+
+## Sunday cron weekly drafts go stale
+
+**Banked 2026-10-01 from FR Leaderboard L-1 Phase 1. Severity: MEDIUM.**
+
+**Observed:** `aggregateDailyToWeeklyCron` (`functions/aggregators/sundayDailyToWeekly.js`) writes the weekly draft ONCE, at Sunday 23:00 TT, for the week that just ended. Nothing re-aggregates it when a daily entry is edited or back-filled later; only `WeekConfirmView` re-aggregates, and only when the agent submits. On staging (tenant `staging_test`, week 2026-08-23) the days now score 52 points and the draft scores 39 (the draft still holds 30 dials; the days hold 45).
+
+Two more gaps from the same read:
+- Between Sunday 00:00 and 23:00 TT the week that just ended has no draft at all.
+- `runAggregation` reads only `role === 'agent'`, so unit and branch managers who log days never get a draft.
+
+**Impact today:** the FR Leaderboard no longer reads drafts (L-1 dispatcher ruling on D5: a week without a submitted report scores its days directly), so the board is not affected. Anything else that reads an unsubmitted draft as the week's activity is.
+
+**Fix shape (needs a ruling):** either re-aggregate on daily write (an `onWrite` trigger on `users/{uid}/dailyActivity/{date}`, skipping submitted weeks), or treat drafts as a prefill only and read days wherever activity is shown.
+
+**Falsification (Rule 23):** overturned if a writer other than the Sunday cron and `WeekConfirmView` is found that refreshes drafts after a day changes (`git grep aggregateDailyToWeekly`).
+
+## rankForLeaderboard has no runtime caller after L-1
+
+**Banked 2026-10-01 from FR Leaderboard L-1. Severity: LOW.**
+
+`functions/leaderboard/leaderboardAggregate.js` now ranks through `functions/leaderboard/boardMetrics.js` (ledger API/Apps, activity points). `rankForLeaderboard` in `functions/leaderboard/rankingLogic.js` ranked weekly-report API and has no runtime caller left; it stays alive only through `src/lib/productionReport/__tests__/cross-check-cjs.test.js`. Remove it (and its cross-check cases) once L-2 and L-3 have shipped and nothing reads weekly-report API ranks.
+
+**Falsification (Rule 23):** overturned if `git grep rankForLeaderboard -- functions` finds a non-test caller.

@@ -1,11 +1,20 @@
 'use strict';
 
-// Leaderboard-aggregate Cloud Function (Track J P1b).
+// Leaderboard-aggregate Cloud Function (Track J P1b; FR Leaderboard L-1).
 //
-// Computes per-branch, per-period (WK/MTD/QTD/YTD) production rankings by
-// composing functions/leaderboard/rankingLogic.js, and writes them to an
-// agent-readable `tenants/{tenantId}/leaderboards/{branchId}` doc via the
-// Admin SDK (bypasses rules). Reads: submissions + users for the active tenant.
+// Computes per-branch, per-period (WK/MTD/QTD/YTD) board metrics and writes
+// them to an agent-readable `tenants/{tenantId}/leaderboards/{branchId}` doc via
+// the Admin SDK (bypasses rules). One doc, three metrics (L-1 D1):
+//
+//   periodApi — settled API from the policy ledger      (D2, D4)
+//   apps      — applications from the policy ledger      (D3, D4)
+//   points    — points from logged activity              (D5 dispatcher ruling)
+//
+// The metric math and the ranker live in ./boardMetrics.js (pure). This module
+// loads the inputs (users, submitted reports, policies, daily entries) and
+// writes the docs. Reads: users + submissions (status 'submitted') + policies +
+// each participant's dailyActivity for weeks WITHOUT a submitted report only.
+// Drafts are never read (D5 ruling).
 //
 // Two triggers (this module exports the handlers; index.js wires both):
 //   - scheduled `recomputeLeaderboardScheduled` — hourly, model sendSundayNudge
@@ -17,33 +26,37 @@
 //
 // Loop-guard: writes are idempotent — Firestore replaces the doc each run.
 // We deliberately do NOT use an onWrite trigger; this is a recompute CF.
-// On-write-trigger optimization → FU.
-//
-// Source: submissions pipeline (D1). Reconciled-production migration is FU-2;
-// the leaderboard fetch swap happens at the `loadInputs` call inside the
-// computeAndWrite function.
 
 const admin     = require('firebase-admin');
 const functions = require('firebase-functions/v1');
+const { getPeriodBoundaries } = require('./rankingLogic');
 const {
-  rankForLeaderboard,
-  filterSubmissionsByPeriod,
-  getPeriodBoundaries,
-} = require('./rankingLogic');
+  periodWindow,
+  sundaysBetween,
+  ledgerCreditsByAgent,
+  submittedWeeksByAgent,
+  weekPointsByAgent,
+  priorRanksForBranch,
+  periodEntries,
+  isChampionCandidate,
+  weeklyChampions,
+} = require('./boardMetrics');
 const { withAppCheckMonitor } = require('../lib/appCheckMonitor');
 
 const TENANT_ID = 'tatillife_south'; // SEC-9c, mirrors index.js scheduled CFs
 const PERIODS = ['week', 'mtd', 'quarter', 'ytd'];
 const PERIOD_KEYS = { week: 'week', mtd: 'mtd', quarter: 'qtd', ytd: 'ytd' };
+const SOURCES = Object.freeze({ api: 'ledger', apps: 'ledger', points: 'activity' });
 
-// ── Inputs: load tenant submissions (calendar YTD + 14-day cushion) + users ──
+// Firestore caps an `in` filter at 30 values.
+const IN_FILTER_MAX = 30;
+
+// ── Inputs ───────────────────────────────────────────────────────────────────
 //
-// P5-prep widens the lower bound by 14 days into the prior calendar year. The
-// CF now needs the most-recently-completed week (`prevSunday`) for
-// `previousRank` + `weeklyChampions/{weekStarting}`. If `referenceDate` falls
-// in the first week of January, `prevSunday` is in late December of the prior
-// year — outside the original `${year}-01-01` lower bound. The 14-day cushion
-// guarantees prior-week data is present without a second query.
+// Submissions and daily entries cover calendar YTD + a 14-day cushion into the
+// prior year, so the most-recently-completed week (`prevSunday`, needed for
+// previousRanks + weeklyChampions) is present even when referenceDate falls in
+// the first week of January.
 
 function padDateString(yyyy, mm, dd) {
   return `${yyyy}-${String(mm).padStart(2, '0')}-${String(dd).padStart(2, '0')}`;
@@ -54,16 +67,55 @@ function dateMinusDays(refDate, days) {
   return padDateString(d.getUTCFullYear(), d.getUTCMonth() + 1, d.getUTCDate());
 }
 
+// Board participants (D8): agents + UMs always; BMs only when
+// appearOnLeaderboard === true (self opt-in); SM/TA/PA never. Provisioning
+// stubs, test accounts, deactivated users (`active === false`) and users with
+// no branchId are left out.
+function isParticipant(u) {
+  return !!u
+    && (u.role === 'agent' ||
+        u.role === 'unit_manager' ||
+        (u.role === 'branch_manager' && u.appearOnLeaderboard === true))
+    && u.provisioning !== true
+    && u.isTestAccount !== true
+    && u.active !== false
+    && !!u.branchId;
+}
+
+function chunk(list, size) {
+  const out = [];
+  for (let i = 0; i < list.length; i += size) out.push(list.slice(i, i + size));
+  return out;
+}
+
+// D5 ruling: read an agent's daily entries ONLY for the weeks in range that
+// have no submitted report from that agent.
+async function loadDailies(db, tenantId, readers, submissions, weeks) {
+  const submitted = submittedWeeksByAgent(submissions);
+  const dailiesByAgent = new Map();
+  let queries = 0;
+  await Promise.all(readers.map(async (u) => {
+    const reported = submitted.get(u.id) || new Set();
+    const missing = weeks.filter((w) => !reported.has(w));
+    const days = [];
+    for (const part of chunk(missing, IN_FILTER_MAX)) {
+      queries += 1;
+      const snap = await db.collection(`tenants/${tenantId}/users/${u.id}/dailyActivity`)
+        .where('weekStarting', 'in', part)
+        .get();
+      for (const d of snap.docs) days.push(d.data());
+    }
+    if (days.length) dailiesByAgent.set(u.id, days);
+  }));
+  return { dailiesByAgent, dailyQueries: queries };
+}
+
 async function loadInputs(tenantId, referenceDate) {
   const db = admin.firestore();
   const year = referenceDate.getFullYear();
-
-  // Cushion lower bound by 14 days so the prior-week submissions (needed for
-  // previousRank + weeklyChampions) are guaranteed to be in the loaded set
-  // even when referenceDate falls in the first week of January.
   const lowerBound = dateMinusDays(new Date(Date.UTC(year, 0, 1)), 14);
 
-  const [subsSnap, usersSnap] = await Promise.all([
+  const [subsSnap, usersSnap, policiesSnap] = await Promise.all([
     db.collection(`tenants/${tenantId}/submissions`)
       .where('weekStarting', '>=', lowerBound)
       .where('weekStarting', '<=', `${year}-12-31`)
@@ -71,12 +123,24 @@ async function loadInputs(tenantId, referenceDate) {
       .get(),
     db.collection(`tenants/${tenantId}/users`)
       .get(),
+    // Whole collection: `dateIssued` is a string on imports and a Timestamp on
+    // app writes, so no single range query can select by date. Filtered in
+    // memory by the ledger's own settled/date rule.
+    db.collection(`tenants/${tenantId}/policies`)
+      .get(),
   ]);
 
   const submissions = subsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const users       = usersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+  const policies    = policiesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
-  return { submissions, users };
+  const currentSunday = periodWindow('week', referenceDate).from;
+  const weeks = sundaysBetween(lowerBound, currentSunday);
+  const readers = users.filter((u) => isParticipant(u) || isChampionCandidate(u));
+  const { dailiesByAgent, dailyQueries } =
+    await loadDailies(db, tenantId, readers, submissions, weeks);
+
+  return { submissions, users, policies, dailiesByAgent, dailyQueries };
 }
 
 // ── Prior-week helpers (P5-prep) ─────────────────────────────────────────────
@@ -101,148 +165,6 @@ function priorWeekStartingString(referenceDate) {
   return padDateString(tt.getUTCFullYear(), tt.getUTCMonth() + 1, tt.getUTCDate());
 }
 
-// ── Champions field extractors (P5-prep) ─────────────────────────────────────
-//
-// Mirrors `src/utils/extractFields.js` for the THREE fields the retired
-// WeeklyChampionsBanner used (applicationsSold + ffiConducted + ciConducted),
-// handling nested schema (s.step1...) and flat (current wizard) + v2.
-// PPP apps are NOT counted in `topApps` to match the retired banner's
-// `parseFloat(f.applicationsSold)` semantic (NB only).
-
-function num(v) { return Number(v) || 0; }
-
-function extractApplicationsSold(s) {
-  if (!s) return 0;
-  // Nested schema (step1..step9)
-  if (s.step1 !== undefined) {
-    const s4 = s.step4 || {};
-    return num(s4.applicationsSold);
-  }
-  // Flat v2 — NB.apps only (matches retired banner)
-  if (s.version === 2 || s.newBusiness !== undefined) {
-    return num(s.newBusiness && s.newBusiness.apps);
-  }
-  // Flat v1
-  return num(s.applicationsSold) || num(s.appsSold);
-}
-
-function extractFFIConducted(s) {
-  if (!s) return 0;
-  if (s.step1 !== undefined) {
-    const s3 = s.step1.ffiConducted !== undefined ? s.step1 : (s.step3 || {});
-    return num(s3.ffiConducted);
-  }
-  return num(s.ffiConducted);
-}
-
-function extractCIConducted(s) {
-  if (!s) return 0;
-  if (s.step1 !== undefined) {
-    const s4 = s.step4 || {};
-    return num(s4.ciConducted);
-  }
-  return num(s.ciConducted);
-}
-
-function extractActivity(s) {
-  return extractFFIConducted(s) + extractCIConducted(s) + extractApplicationsSold(s);
-}
-
-// ── Champions extraction (P5-prep) ───────────────────────────────────────────
-//
-// Tenant-wide top-1 per category from the prior week's submissions. Matches
-// the retired banner's semantics (top-1, ties broken by agentName, null when
-// no agent posted a positive value). Tenant-wide scope (NOT per-branch).
-// Uses extractTotalProductionCredit (in rankingLogic.js) for API.
-
-function computeWeeklyChampions(priorWeekSubs, users, weekStarting) {
-  if (!Array.isArray(priorWeekSubs) || priorWeekSubs.length === 0) {
-    return { topAPI: null, topApps: null, topActivity: null, weekStarting };
-  }
-
-  const nameByAgent = new Map();
-  for (const u of users) {
-    if (u && u.id) nameByAgent.set(u.id, u.name || u.email || u.id);
-  }
-
-  // Per-agent totals for the prior week.
-  const byAgent = new Map();
-  const { extractTotalProductionCredit } = require('./rankingLogic');
-  for (const s of priorWeekSubs) {
-    const agentId = s.agentId == null ? s.userId : s.agentId;
-    if (!agentId) continue;
-    // Skip submissions from non-agent uids (UMs etc.) — defensive, mirrors
-    // groupByBranch + rankForLeaderboard agent-only filtering.
-    const u = users.find((x) => x.id === agentId);
-    if (!u || u.role !== 'agent' || u.provisioning === true || u.isTestAccount === true) continue;
-
-    const cur = byAgent.get(agentId) || { api: 0, apps: 0, activity: 0 };
-    cur.api      += num(extractTotalProductionCredit(s));
-    cur.apps     += extractApplicationsSold(s);
-    cur.activity += extractActivity(s);
-    byAgent.set(agentId, cur);
-  }
-
-  function pickTop(metric) {
-    let best = null;
-    for (const [agentId, totals] of byAgent.entries()) {
-      const value = totals[metric];
-      if (!(value > 0)) continue;
-      const agentName = nameByAgent.get(agentId) || agentId;
-      if (
-        best === null
-        || value > best.value
-        || (value === best.value && agentName.localeCompare(best.agentName) < 0)
-      ) {
-        best = { agentId, agentName, value };
-      }
-    }
-    return best;
-  }
-
-  return {
-    topAPI:      pickTop('api'),
-    topApps:     pickTop('apps'),
-    topActivity: pickTop('activity'),
-    weekStarting,
-  };
-}
-
-// ── previousRank helper (P5-prep) ────────────────────────────────────────────
-//
-// Computes the prior-week branch ranking for every branch in `byBranch` and
-// returns a Map<agentId, priorRank>. The map is tenant-wide; ranks are scoped
-// to each agent's own branch (branch-scoped previousRank, matching current
-// branch rank).
-//
-// Implementation: filter `submissions` to the prior week via
-// filterSubmissionsByPeriod, then groupByBranch the prior-week subset (same
-// grouping function), then call rankForLeaderboard per branch.
-
-function computePriorRankByAgent(submissions, users, referenceDate, groupByBranchFn) {
-  const priorRef = priorWeekReferenceDate(referenceDate);
-  const priorWeekSubs = filterSubmissionsByPeriod(submissions, 'week', priorRef);
-  const { byBranch: priorByBranch } = groupByBranchFn(priorWeekSubs, users);
-
-  const priorRankByAgent = new Map();
-  for (const [/* branchId */, { subs, users: branchUsers }] of priorByBranch.entries()) {
-    const ranked = rankForLeaderboard(subs, branchUsers, 'week', priorRef);
-    // Record every agent in the prior-week ranking — INCLUDING those with
-    // periodApi=0 ("ranked-$0" agents tied at the bottom). The current-week
-    // ranking treats $0 agents the same way (they appear in the doc's entry
-    // list at the bottom), so previousRank must too — otherwise low
-    // performers lose movement data and the chip semantics drift from
-    // current-week. The `?? null` fallback in buildLeaderboardDoc handles
-    // the genuinely-absent case (agent's branchId is missing → excluded from
-    // groupByBranch in BOTH prior- and current-week, so they don't appear in
-    // the leaderboard doc at all, so previousRank-null never surfaces).
-    for (const entry of ranked) {
-      priorRankByAgent.set(entry.agentId, entry.rank);
-    }
-  }
-  return { priorRankByAgent, priorWeekSubs };
-}
-
 // ── Branch grouping via agentId → branchId join on user docs ─────────────────
 //
 // Submissions carry only `unitId`; no `branchId` field, no `units` collection
@@ -250,12 +172,10 @@ function computePriorRankByAgent(submissions, users, referenceDate, groupByBranc
 // own `branchId` field to group their submissions.
 
 // ATTRIBUTION SEMANTICS — current-branch attribution:
-//   A submission is bucketed to the agent's CURRENT branchId (read from the
-//   live user doc at compute time). Mid-year movers' historical production
-//   follows them to their current branch. This matches BranchManagerProductionView
-//   and is the natural default; an FU would be needed to support
-//   historical-branch attribution (submission carries denormalized branchId at
-//   write time).
+//   A submission (and a policy) is credited to the agent's CURRENT branchId
+//   (read from the live user doc at compute time). Mid-year movers' historical
+//   production follows them to their current branch. This matches
+//   BranchManagerProductionView and is the natural default.
 //
 // SKIP SEMANTICS — silent drop + observable counters:
 //   Submissions whose agent has no branchId (migration gap or non-agent
@@ -267,16 +187,6 @@ function groupByBranch(submissions, users) {
   // agentId → branchId map (built from the SINGLE already-loaded users array;
   // no per-agent get() — see loadInputs).
   const branchByAgent = new Map();
-  // Role-gated inclusion: agents + UMs always appear; BMs only when
-  // appearOnLeaderboard === true (self opt-in); SM/TA/PA never.
-  const isParticipant = (u) =>
-    (u.role === 'agent' ||
-     u.role === 'unit_manager' ||
-     (u.role === 'branch_manager' && u.appearOnLeaderboard === true)) &&
-    u.provisioning !== true &&
-    u.isTestAccount !== true &&
-    !!u.branchId;
-
   for (const u of users) {
     if (isParticipant(u)) {
       branchByAgent.set(u.id, u.branchId);
@@ -290,7 +200,7 @@ function groupByBranch(submissions, users) {
     return byBranch.get(b);
   };
 
-  // Bucket all visible users into their branch using the same role-gated filter.
+  // Bucket all visible users into their branch using the same participant filter.
   for (const u of users) {
     if (isParticipant(u)) {
       ensure(u.branchId).users.push(u);
@@ -327,19 +237,18 @@ function groupByBranch(submissions, users) {
   };
 }
 
-// ── Per-branch×period composition + map to leaderboard entry shape ───────────
+// ── Per-branch doc ───────────────────────────────────────────────────────────
 //
-// P5-prep additions to the entry shape:
-//   - `unitId` (all periods) — passthrough from rankForLeaderboard, was being
-//     dropped before. Enables client-side unit-scoping (P5a).
-//   - `previousRank` (WEEK only; null for MTD/QTD/YTD) — branch-scoped
-//     prior-WAR-week rank. Enables the week-over-week movement chip.
+// Entry shape (every period): agentId, name, unitId, unitName, periodApi, apps,
+// points, rank, rankWithinUnit, previousRank, previousRanks.
+//   - rank / rankWithinUnit — API board order (Nexus surface keeps working, D7)
+//   - previousRanks { activity, api, apps } — WEEK only (null otherwise), the
+//     prior week's branch rank on each board; previousRank === previousRanks.api
 
-function buildLeaderboardDoc(branchSubs, branchUsers, referenceDate, priorRankByAgent) {
-  const doc = { computedAt: admin.firestore.FieldValue.serverTimestamp() };
+function buildLeaderboardDoc(branchUsers, referenceDate, ctx) {
+  const doc = { computedAt: admin.firestore.FieldValue.serverTimestamp(), sources: SOURCES };
 
-  // Resolve unit name once for the whole branch (rankForLeaderboard returns
-  // unitId only; we look up display name from the in-scope UM docs).
+  // Resolve unit names once for the whole branch from the in-scope UM docs.
   const unitNameByMgrUid = {};
   for (const u of branchUsers) {
     if (u.role === 'unit_manager') {
@@ -349,86 +258,73 @@ function buildLeaderboardDoc(branchSubs, branchUsers, referenceDate, priorRankBy
     }
   }
 
-  const priorRanks = priorRankByAgent instanceof Map ? priorRankByAgent : new Map();
-
+  const priorRanks = priorRanksForBranch(branchUsers, priorWeekReferenceDate(referenceDate), ctx);
   for (const period of PERIODS) {
-    const ranked = rankForLeaderboard(branchSubs, branchUsers, period, referenceDate);
-    const isWeek = period === 'week';
-    doc[PERIOD_KEYS[period]] = ranked.map((entry) => ({
-      agentId:        entry.agentId,
-      name:           entry.name,
-      unitId:         entry.unitId == null ? null : entry.unitId,
-      unitName:       entry.unitId ? (unitNameByMgrUid[entry.unitId] || null) : null,
-      periodApi:      entry.periodApi,
-      apps:           entry.apps,
-      rank:           entry.rank,
-      rankWithinUnit: entry.rankWithinUnit,
-      previousRank:   isWeek ? (priorRanks.get(entry.agentId) ?? null) : null,
-    }));
+    doc[PERIOD_KEYS[period]] =
+      periodEntries(branchUsers, period, referenceDate, ctx, unitNameByMgrUid, priorRanks);
   }
-
   return doc;
 }
 
-// ── Core compute-and-write ───────────────────────────────────────────────────
+// ── Core compute (pure over loaded inputs) ───────────────────────────────────
 
-async function computeAndWriteLeaderboards(tenantId, referenceDate = new Date()) {
-  const { submissions, users } = await loadInputs(tenantId, referenceDate);
+function computeLeaderboards(inputs, referenceDate) {
+  const { submissions, users, policies, dailiesByAgent } = inputs;
+  const ctx = {
+    creditsByAgent: ledgerCreditsByAgent(policies),
+    weekPointsByAgent: weekPointsByAgent(submissions, dailiesByAgent),
+  };
 
   const { byBranch, skippedNoBranch } = groupByBranch(submissions, users);
 
-  // Surface the skip count in CF logs. Migration gaps in agent branchId are
-  // not safety-critical (a buggy CF writes a doc nothing reads until P3),
-  // but they're worth flagging so they don't accumulate silently.
+  const docs = new Map();
+  for (const [branchId, { users: branchUsers }] of byBranch.entries()) {
+    const doc = buildLeaderboardDoc(branchUsers, referenceDate, ctx);
+    // skippedNoBranch is tenant-wide; written onto every branch doc so any
+    // reader can spot it without a separate tenant-level fetch.
+    doc.skippedNoBranch = skippedNoBranch;
+    docs.set(branchId, doc);
+  }
+
+  const priorWeekStarting = priorWeekStartingString(referenceDate);
+  const championsDoc = weeklyChampions(users, priorWeekReferenceDate(referenceDate), ctx, priorWeekStarting);
+
+  return { docs, championsDoc, priorWeekStarting, skippedNoBranch };
+}
+
+async function computeAndWriteLeaderboards(tenantId, referenceDate = new Date()) {
+  const inputs = await loadInputs(tenantId, referenceDate);
+  const { docs, championsDoc, priorWeekStarting, skippedNoBranch } =
+    computeLeaderboards(inputs, referenceDate);
+
   if (skippedNoBranch.count > 0) {
     console.warn(
       `[recomputeLeaderboard] tenant=${tenantId} skippedNoBranch=${skippedNoBranch.count} agentIds=${JSON.stringify(skippedNoBranch.agentIds)}`
     );
   }
 
-  // P5-prep: ONE prior-week computation feeds BOTH previousRank (per-branch
-  // ranking, used by the WEEK entries) AND the tenant-wide champions doc.
-  // Filter the already-loaded submissions to the prior WAR week, then derive
-  // both outputs from the same subset.
-  const { priorRankByAgent, priorWeekSubs } = computePriorRankByAgent(
-    submissions, users, referenceDate, groupByBranch
-  );
-  const priorWeekStarting = priorWeekStartingString(referenceDate);
-  const championsDoc = computeWeeklyChampions(priorWeekSubs, users, priorWeekStarting);
-
   const db = admin.firestore();
   const batch = db.batch();
-
-  let branchCount = 0;
-  for (const [branchId, { subs, users: branchUsers }] of byBranch.entries()) {
-    const doc = buildLeaderboardDoc(subs, branchUsers, referenceDate, priorRankByAgent);
-    // Doc-level metadata: skippedNoBranch is tenant-wide (not per-branch);
-    // we write it onto every per-branch doc so any reader can spot it without
-    // a separate tenant-level metadata fetch.
-    doc.skippedNoBranch = skippedNoBranch;
-    const ref = db.doc(`tenants/${tenantId}/leaderboards/${branchId}`);
-    batch.set(ref, doc); // full replace — idempotent
-    branchCount++;
+  for (const [branchId, doc] of docs.entries()) {
+    batch.set(db.doc(`tenants/${tenantId}/leaderboards/${branchId}`), doc); // full replace — idempotent
   }
 
-  // P5-prep: tenant-wide weeklyChampions/{weekStarting} doc. Agent-readable
-  // (rules in firestore.rules); write-only via the Admin SDK (bypasses rules).
-  // Doc-id is the prior-week's Sunday (matches the retired banner's
-  // `weekStarting` semantic + the doc lookup the re-homed banner will do).
-  const championsRef = db.doc(`tenants/${tenantId}/weeklyChampions/${priorWeekStarting}`);
-  batch.set(championsRef, {
+  // Tenant-wide weeklyChampions/{weekStarting} doc. Agent-readable (rules in
+  // firestore.rules); write-only via the Admin SDK. Doc-id is the prior week's Sunday.
+  batch.set(db.doc(`tenants/${tenantId}/weeklyChampions/${priorWeekStarting}`), {
     ...championsDoc,
     computedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   await batch.commit();
   return {
-    branchCount,
-    totalSubmissions: submissions.length,
-    totalUsers: users.length,
+    branchCount: docs.size,
+    totalSubmissions: inputs.submissions.length,
+    totalUsers: inputs.users.length,
+    totalPolicies: inputs.policies.length,
+    dailyQueries: inputs.dailyQueries,
     skippedNoBranch,
     priorWeekStarting,
-    championsPriorWeekAgents: priorWeekSubs.length,
   };
 }
 
@@ -442,7 +338,7 @@ exports.recomputeLeaderboardScheduled = functions.pubsub
   .onRun(async () => {
     try {
       const result = await computeAndWriteLeaderboards(TENANT_ID);
-      console.log(`[recomputeLeaderboardScheduled] tenant=${TENANT_ID} branches=${result.branchCount} subs=${result.totalSubmissions} users=${result.totalUsers}`);
+      console.log(`[recomputeLeaderboardScheduled] tenant=${TENANT_ID} branches=${result.branchCount} subs=${result.totalSubmissions} users=${result.totalUsers} policies=${result.totalPolicies} dailyQueries=${result.dailyQueries}`);
     } catch (err) {
       console.error('[recomputeLeaderboardScheduled]', err);
     }
@@ -483,8 +379,8 @@ exports.recomputeLeaderboardOnDemand = functions.https.onCall(withAppCheckMonito
       branchCount: result.branchCount,
       totalSubmissions: result.totalSubmissions,
       totalUsers: result.totalUsers,
+      totalPolicies: result.totalPolicies,
       priorWeekStarting: result.priorWeekStarting,
-      championsPriorWeekAgents: result.championsPriorWeekAgents,
     };
   } catch (err) {
     console.error('[recomputeLeaderboardOnDemand]', err);
@@ -492,18 +388,14 @@ exports.recomputeLeaderboardOnDemand = functions.https.onCall(withAppCheckMonito
   }
 }));
 
-// Pure logic exports for unit tests (no firebase-admin in test path)
+// Pure logic + loaders exported for unit tests and the staging dry-run script.
 exports._internals = {
+  isParticipant,
   groupByBranch,
   buildLeaderboardDoc,
+  loadInputs,
+  computeLeaderboards,
   computeAndWriteLeaderboards,
-  // P5-prep additions
-  computeWeeklyChampions,
-  computePriorRankByAgent,
   priorWeekReferenceDate,
   priorWeekStartingString,
-  extractApplicationsSold,
-  extractFFIConducted,
-  extractCIConducted,
-  extractActivity,
 };
