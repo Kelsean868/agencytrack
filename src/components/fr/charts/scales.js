@@ -109,3 +109,36 @@ export function keyIndexes(values) {
   out.add(max);
   return out;
 }
+
+// fr-fit-any-width W-4 — the highlighted bar and the last bar both carry a
+// value label. When the plot is too narrow for the two to clear each other,
+// the highlighted label sits one line higher (ruling: "raise one label").
+// Whether they clear depends on the bar count, how far apart the two bars
+// are and the label length, so the threshold is picked per chart below; the
+// switch itself is a container query on the plot. Literal class names so
+// Tailwind generates them.
+const LABEL_CHAR_PX = 6.6; // 11px semibold tabular figures
+const LABEL_GAP_PX = 8;
+/** One value-label line (11px text, ~16px box): bar tops this far apart never collide. */
+export const LABEL_LINE_PX = 16;
+const RAISE_STEPS = [
+  [16, 'mb-5 @[16rem]:mb-1'],
+  [20, 'mb-5 @[20rem]:mb-1'],
+  [24, 'mb-5 @[24rem]:mb-1'],
+  [28, 'mb-5 @[28rem]:mb-1'],
+  [32, 'mb-5 @[32rem]:mb-1'],
+  [40, 'mb-5 @[40rem]:mb-1'],
+  [48, 'mb-5 @[48rem]:mb-1'],
+  [56, 'mb-5 @[56rem]:mb-1'],
+  [64, 'mb-5 @[64rem]:mb-1'],
+];
+
+/** Margin class for the highlighted bar's value label (see RAISE_STEPS). */
+export function highlightLabelClass(texts, highlightIndex) {
+  const last = texts.length - 1;
+  if (highlightIndex < 0 || highlightIndex === last) return 'mb-1';
+  const labelPx = Math.max(texts[highlightIndex].length, texts[last].length) * LABEL_CHAR_PX + LABEL_GAP_PX;
+  const needPx = (texts.length * labelPx) / (last - highlightIndex);
+  const step = RAISE_STEPS.find(([rem]) => rem * 16 >= needPx);
+  return step ? step[1] : 'mb-5';
+}

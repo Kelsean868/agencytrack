@@ -243,7 +243,9 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
   // its own containing block mid-animation.
   return (
     <>
-    <div className="flex flex-col gap-6 stagger">
+    {/* fr-fit-any-width W-4: card grids follow the PANEL's width (beside the
+        sidebar), not the window — 4 across from 56rem, 2 from 28rem. */}
+    <div className="@container/awards flex flex-col gap-6 stagger">
 
       {/* Item 3.4 — honest ledger-source chip (flag-gated) */}
       {awardsProvenanceOn && (
@@ -325,7 +327,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       {qualified.length > 0 && (
         <div>
           <GroupHeader label="✓ Qualified" count={qualified.length} accentStyle={{ color: 'var(--color-gold-ink)' }} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 @[28rem]/awards:grid-cols-2 @[56rem]/awards:grid-cols-4 gap-3">
             {qualified.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAwardId(a.id)} />)}
           </div>
         </div>
@@ -334,7 +336,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       {almostThere.length > 0 && (
         <div>
           <GroupHeader label="★ Almost there · 70%+" count={almostThere.length} accentStyle={{ color: 'var(--color-primary)' }} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 @[28rem]/awards:grid-cols-2 @[56rem]/awards:grid-cols-4 gap-3">
             {almostThere.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAwardId(a.id)} />)}
           </div>
         </div>
@@ -343,7 +345,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       {makingProgress.length > 0 && (
         <div>
           <GroupHeader label="↗ Making progress · 30–70%" count={makingProgress.length} accentStyle={{ color: 'var(--color-primary)' }} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 @[28rem]/awards:grid-cols-2 @[56rem]/awards:grid-cols-4 gap-3">
             {makingProgress.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAwardId(a.id)} />)}
           </div>
         </div>
@@ -352,7 +354,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       {justStarting.length > 0 && (
         <div>
           <GroupHeader label="◯ Just starting · under 30%" count={justStarting.length} accentStyle={{ color: 'var(--color-text-muted)' }} />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 @[28rem]/awards:grid-cols-2 @[56rem]/awards:grid-cols-4 gap-3">
             {justStarting.map(a => <AwardCard key={a.id} award={a} onClick={() => setDrawerAwardId(a.id)} />)}
           </div>
         </div>
@@ -387,7 +389,7 @@ export default function AgentAwardsPanel({ submissions, confirmedSettlements, ag
       {ratioTrends && (
         <div>
           <p className="text-xs font-bold tracking-widest text-ink-muted font-mono uppercase mb-3">Activity ratio trends · last 12 weeks</p>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 @[56rem]/awards:grid-cols-4 gap-3">
             <RatioTrendCard
               label="CI to Sale"
               value4w={ratioTrends.ciToSaleRatio.trailing4w}

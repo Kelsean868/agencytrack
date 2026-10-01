@@ -381,7 +381,11 @@ export default function FrCareerView({
         <NextLevel next={next} />
         <PaceCard pace={pace} gap={gap} onPlan={onPlan} />
       </div>
-      <div className={phone ? 'flex flex-col gap-4' : 'grid grid-cols-1 gap-4 xl:grid-cols-2'}>
+      {/* fr-fit-any-width W-4: Trajectory | Commitment side by side only when the
+          main column has 44rem (desktop layout names it /career). At 1280 the
+          column is ~39rem beside the 340px inspector, and 8 quarter labels in a
+          half-width card were cut. */}
+      <div className={phone ? 'flex flex-col gap-4' : 'grid grid-cols-1 gap-4 @[44rem]/career:grid-cols-2'}>
         <Trajectory series={series} />
         <Commitment commitment={commitment} />
       </div>
@@ -394,7 +398,7 @@ export default function FrCareerView({
       <div className="flex min-w-0 flex-col gap-4" data-testid="fr-career" data-layout="desktop">
         {head}
         <div className="flex min-w-0 items-start gap-5">
-          <div className="flex min-w-0 flex-1 flex-col gap-4">{ladder}{body}</div>
+          <div className="@container/career flex min-w-0 flex-1 flex-col gap-4">{ladder}{body}</div>
           <aside aria-label="Selected level" className="sticky top-4 w-[340px] flex-none rounded-[20px] border border-border bg-fr-pane p-5" data-testid="fr-career-inspector">
             <LevelPanelBody panel={panel} />
           </aside>
