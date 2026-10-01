@@ -19,6 +19,7 @@
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
 | Sunday cron weekly drafts go stale: written once at Sun 23:00 TT and never re-aggregated when a day is edited later (staging week 2026-08-23: days 52 pts, draft 39 pts); unit and branch managers get no draft at all (banked 2026-10-01, FR Leaderboard L-1 Phase 1) | MEDIUM | Daily → weekly aggregator | — | see § Sunday cron weekly drafts go stale |
+| Leaderboard aggregate takes the load year from the server (UTC) clock, not TT: from TT Dec 31 20:00 to 23:59 it loads the NEXT year's reports and days, so YTD points (and, before L-1, YTD API) collapse for 4 hours (banked 2026-10-01, CodeRabbit on #1045) | LOW | Leaderboard / functions | — | see § Leaderboard aggregate load year uses the UTC clock |
 | `rankForLeaderboard` in `functions/leaderboard/rankingLogic.js` has no runtime caller after FR Leaderboard L-1 (kept only by its cross-check test) (banked 2026-10-01) | LOW | Leaderboard / functions | — | see § rankForLeaderboard has no runtime caller after L-1 |
 | Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
 | FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
@@ -8316,3 +8317,13 @@ Two more gaps from the same read:
 `functions/leaderboard/leaderboardAggregate.js` now ranks through `functions/leaderboard/boardMetrics.js` (ledger API/Apps, activity points). `rankForLeaderboard` in `functions/leaderboard/rankingLogic.js` ranked weekly-report API and has no runtime caller left; it stays alive only through `src/lib/productionReport/__tests__/cross-check-cjs.test.js`. Remove it (and its cross-check cases) once L-2 and L-3 have shipped and nothing reads weekly-report API ranks.
 
 **Falsification (Rule 23):** overturned if `git grep rankForLeaderboard -- functions` finds a non-test caller.
+
+## Leaderboard aggregate load year uses the UTC clock
+
+**Banked 2026-10-01 from CodeRabbit on #1045 (FR Leaderboard L-1). Severity: LOW. Pre-existing — the line predates L-1.**
+
+`loadInputs` in `functions/leaderboard/leaderboardAggregate.js` computes `year = referenceDate.getFullYear()`. Cloud Functions run in UTC, so from TT Dec 31 20:00 to 23:59 (UTC Jan 1) the year is the NEXT year. The submissions query then covers next-year Dec 18 onward, and (since L-1) the daily-entry weeks list does too. The TT periods are still this year, so YTD points read nearly empty for those 4 hours; before L-1 YTD API did the same. Ledger API/Apps are not affected (policies are read whole and dated by the TT window). The existing "year-boundary" test only checks that late-December business survives, not January–mid-December.
+
+**Fix shape:** derive the year from the TT YTD window, `Number(periodWindow('ytd', referenceDate).from.slice(0, 4))`, and add a test with a TT Dec 31 22:00 reference and a June report.
+
+**Falsification (Rule 23):** overturned if the scheduled function's runtime timezone is not UTC (`process.env.TZ` set in the functions config).

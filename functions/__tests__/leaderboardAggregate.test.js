@@ -44,6 +44,7 @@ function makeQuery(collectionPath) {
 const mockFirestore = () => ({
   collection: (path) => makeQuery(path),
   doc:        (path) => ({
+    path,
     async get() { return { exists: !!firestoreDocs[path], data: () => firestoreDocs[path] }; },
     async set(data) { firestoreDocs[path] = data; },
   }),
@@ -384,7 +385,11 @@ describe('computeAndWriteLeaderboards', () => {
     expect(leaderboardOps()).toHaveLength(2);
     expect(championsOp()).toBeDefined();
     expect(mockBatch.ops).toHaveLength(3);
-    expect(mockBatch.ops.map((op) => op.ref).filter(Boolean)).toBeDefined();
+    expect(mockBatch.ops.map((op) => op.ref.path).sort()).toEqual([
+      'tenants/T/leaderboards/north',
+      'tenants/T/leaderboards/south',
+      'tenants/T/weeklyChampions/2026-05-03',
+    ]);
   });
 
   test('per-branch doc ranks that branch only, by ledger API', async () => {
