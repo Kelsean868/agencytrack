@@ -17,3 +17,9 @@ Agent System (`design_handoff_agencytrack_v3/`).
 
 **Round 2 additions (29-09-2026, canvas version 39, approved by Kyron):** `D3-Leaderboard`, `M3-Leaderboard`,
 `D3-Career`, `M3-Career`. Build brief: `docs/briefs/fr-career-leaderboard-kickoff.md` (R2-10 / R2-11).
+
+**Leaderboard three boards (01-10-2026, canvas version 43, approved by Kyron):** `D3-Leaderboard` and
+`M3-Leaderboard` replaced. They add the **Activity · API · Apps** board switch (opens on Activity) before the
+Period radios; podium, ranks, "to pass", rank-per-period and the share donut all follow the chosen board.
+Build brief: `docs/briefs/fr-leaderboard-three-boards-kickoff.md` (L-2). **Copy:** the brief's D11 table wins
+over the canvas text — the Activity footer includes sales (all points, Kyron 01-10-2026).

@@ -28,6 +28,11 @@
   <main style="width: 1220px; flex-shrink: 0; display: flex; flex-direction: column; min-height: 0;">
     <header style="height: 56px; flex-shrink: 0; box-sizing: border-box; padding: 0 20px 0 28px; display: flex; align-items: center; gap: 14px; background: {{c.glass}}; border-bottom: 1px solid {{c.rule}};">
       <h1 style="margin: 0; font-family: 'Bricolage Grotesque', sans-serif; font-size: 20px; font-weight: 700; letter-spacing: -0.02em;">Leaderboard</h1>
+      <div role="radiogroup" aria-label="Board" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: {{c.sunk}};">
+        <sc-for list="{{boards}}" as="b" hint-placeholder-count="3">
+          <button role="radio" aria-checked="{{b.on}}" onClick="{{b.pick}}" style="height: 44px; margin: -7px 0; padding: 0; border: 0; background: transparent; display: flex; align-items: center; cursor: pointer; font-family: 'Onest', sans-serif;"><span style="height: 30px; padding: 0 14px; border-radius: 8px; background: {{b.bg}}; color: {{b.color}}; font-size: 13px; font-weight: 800; display: flex; align-items: center; transition: background 160ms ease, color 160ms ease;">{{b.label}}</span></button>
+        </sc-for>
+      </div>
       <div role="radiogroup" aria-label="Period" style="display: flex; gap: 2px; padding: 3px; border-radius: 10px; background: {{c.sunk}};">
         <sc-for list="{{periods}}" as="p" hint-placeholder-count="4">
           <button role="radio" aria-checked="{{p.on}}" onClick="{{p.pick}}" style="height: 44px; margin: -7px 0; padding: 0; border: 0; background: transparent; display: flex; align-items: center; cursor: pointer; font-family: 'Onest', sans-serif;"><span style="height: 30px; padding: 0 12px; border-radius: 8px; background: {{p.bg}}; color: {{p.color}}; box-shadow: {{p.shadow}}; font-size: 13px; font-weight: 700; display: flex; align-items: center;">{{p.label}}</span></button>
@@ -82,8 +87,8 @@
         <sc-if value="{{isEmpty}}" hint-placeholder-val="{{false}}">
           <section style="flex-shrink: 0; border-radius: 20px; border: 1px dashed {{c.rule}}; background: {{c.surface}}; padding: 40px 22px; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="{{c.mute}}" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M4 20h4v-7H4zM10 20h4V8h-4zM16 20h4v-10h-4z"></path></svg>
-            <strong style="font-size: 16px;">No production logged for {{periodWord}} yet</strong>
-            <span style="font-size: 13px; color: {{c.mute}};">The board fills in as settled business comes in. Log a policy to get on it.</span>
+            <strong style="font-size: 16px;">{{emptyTitle}}</strong>
+            <span style="font-size: 13px; color: {{c.mute}};">{{emptyLine}}</span>
           </section>
         </sc-if>
 
@@ -100,8 +105,8 @@
                   <sc-if value="{{pd.isYou}}" hint-placeholder-val="{{false}}"><span style="height: 20px; padding: 0 8px; border-radius: 10px; background: {{c.accent}}; color: {{c.onAccent}}; font-size: 11px; font-weight: 800; display: flex; align-items: center;">YOU</span></sc-if>
                   <span style="width: {{pd.av}}px; height: {{pd.av}}px; border-radius: 50%; background: {{c.accentTint}}; color: {{c.accent}}; border: 3px solid {{pd.ring}}; display: flex; align-items: center; justify-content: center; font-family: 'Bricolage Grotesque', sans-serif; font-size: 18px; font-weight: 800; box-sizing: border-box;">{{pd.initials}}</span>
                   <span style="font-size: 15px; font-weight: 800;">{{pd.name}}</span>
-                  <span style="font-size: 12px; color: {{c.mute}};">{{pd.unit}} · {{pd.apps}}</span>
-                  <span class="tn" style="font-family: 'Bricolage Grotesque', sans-serif; font-size: {{pd.fs}}px; font-weight: 800; letter-spacing: -0.02em; color: {{pd.valColor}};">{{pd.api}}</span>
+                  <span style="font-size: 12px; color: {{c.mute}};">{{pd.unit}} · {{pd.second}}</span>
+                  <span class="tn" style="font-family: 'Bricolage Grotesque', sans-serif; font-size: {{pd.fs}}px; font-weight: 800; letter-spacing: -0.02em; color: {{pd.valColor}};">{{pd.val}}</span>
                   <span class="lb-pod" style="width: 100%; height: {{pd.h}}px; border-radius: 14px 14px 0 0; background: {{pd.block}}; display: flex; justify-content: center; padding-top: 8px; box-sizing: border-box; font-family: 'Bricolage Grotesque', sans-serif; font-size: 26px; font-weight: 800; color: {{pd.blockInk}};">{{pd.place}}</span>
                 </div>
               </sc-for>
@@ -110,7 +115,7 @@
 
           <section aria-label="Everyone else" style="flex-shrink: 0; border-radius: 20px; border: 1px solid {{c.rule}}; background: {{c.surface}}; overflow: hidden;">
             <div style="height: 40px; padding: 0 18px; display: grid; grid-template-columns: 44px minmax(0, 1fr) 70px 280px 110px; gap: 12px; align-items: center; background: {{c.sunk}}; font-size: 12px; font-weight: 700; color: {{c.mute}};">
-              <span>Rank</span><span>Agent</span><span style="text-align: right;">Apps</span><span>Against the leader</span><span style="text-align: right;">Settled API</span>
+              <span>Rank</span><span>Agent</span><span style="text-align: right;">{{colSecond}}</span><span>Against the leader</span><span style="text-align: right;">{{colMain}}</span>
             </div>
             <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
               <sc-if value="{{r.isGap}}" hint-placeholder-val="{{false}}">
@@ -124,14 +129,14 @@
                     <span style="display: flex; flex-direction: column; min-width: 0;"><span style="font-size: 14px; font-weight: {{r.weight}}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="{{r.name}}">{{r.name}}</span><span style="font-size: 12px; color: {{c.mute}};">{{r.unit}}</span></span>
                     <sc-if value="{{r.hasMove}}" hint-placeholder-val="{{false}}"><span style="flex-shrink: 0; height: 22px; padding: 0 8px; border-radius: 11px; background: {{c.accentTint}}; color: {{c.accent}}; font-size: 11px; font-weight: 800; display: flex; align-items: center;">{{r.move}}</span></sc-if>
                   </span>
-                  <span class="tn" style="text-align: right; font-size: 13px; color: {{c.mute}};">{{r.apps}}</span>
+                  <span class="tn" style="text-align: right; font-size: 13px; color: {{c.mute}};">{{r.second}}</span>
                   <span role="img" aria-label="{{r.pctLabel}}" style="height: 10px; border-radius: 5px; background: {{c.sunk}}; overflow: hidden;"><span class="lb-bar" style="display: block; height: 10px; width: {{r.pct}}%; border-radius: 5px; background: {{r.barColor}};"></span></span>
-                  <span class="tn" style="text-align: right; font-size: 14px; font-weight: 800; color: {{r.valColor}};">{{r.api}}</span>
+                  <span class="tn" style="text-align: right; font-size: 14px; font-weight: 800; color: {{r.valColor}};">{{r.val}}</span>
                 </div>
               </sc-if>
             </sc-for>
           </section>
-          <span style="font-size: 12px; color: {{c.faint}};">Ranked by settled API in your branch. Test accounts are left out. Updated 29-09-2026 05:10 · 0 reports skipped. Names and figures are SAMPLE; your own figure is the live one.</span>
+          <span style="font-size: 12px; color: {{c.faint}};">{{footer}} Test accounts are left out. Updated 30-09-2026 05:10. Names and figures are SAMPLE.</span>
         </sc-if>
       </div>
 
@@ -139,7 +144,7 @@
         <span style="font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: {{c.accent}};">YOUR STANDING · {{periodShort}}</span>
         <div style="display: flex; align-items: baseline; gap: 10px;">
           <span class="tn" style="font-family: 'Bricolage Grotesque', sans-serif; font-size: 56px; font-weight: 800; letter-spacing: -0.04em; line-height: 1;">{{you.rankBig}}</span>
-          <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 700;">of {{you.of}} agents</span><span class="tn" style="font-size: 13px; color: {{c.mute}};">{{you.api}} settled</span></span>
+          <span style="display: flex; flex-direction: column; gap: 2px;"><span style="font-size: 14px; font-weight: 700;">of {{you.of}} agents</span><span class="tn" style="font-size: 13px; color: {{c.mute}};">{{you.valLine}}</span></span>
         </div>
         <div style="border-radius: 16px; background: {{c.surface}}; border: 1px solid {{c.rule}}; padding: 14px; display: flex; flex-direction: column; gap: 8px;">
           <span style="font-size: 12px; font-weight: 700; color: {{c.mute}};">To pass the next agent</span>
@@ -168,7 +173,7 @@
             <circle cx="48" cy="48" r="38" fill="none" stroke="{{c.accent}}" stroke-width="12" stroke-linecap="round" stroke-dasharray="{{share.dash}}" transform="rotate(-90 48 48)"></circle>
             <text x="48" y="53" text-anchor="middle" font-family="Bricolage Grotesque, sans-serif" font-size="17" font-weight="800" fill="{{c.ink}}">{{share.pct}}</text>
           </svg>
-          <span style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 14px; font-weight: 700;">Your share of the branch</span><span class="tn" style="font-size: 13px; color: {{c.mute}};">{{share.line}}</span></span>
+          <span style="display: flex; flex-direction: column; gap: 3px;"><span style="font-size: 14px; font-weight: 700;">{{share.title}}</span><span class="tn" style="font-size: 13px; color: {{c.mute}};">{{share.line}}</span></span>
         </div>
         <a href="D3-Trophies.dc.html" style="min-height: 44px; border-radius: 12px; border: 1px solid {{c.rule}}; background: {{c.surface}}; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px; font-weight: 700; text-decoration: none; color: {{c.ink}};">Awards you can win from here</a>
       </aside>
@@ -176,11 +181,11 @@
   </main>
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"role":{"editor":"enum","options":["agent","manager"],"default":"agent"},"state":{"editor":"enum","options":["ready","loading","empty","error"],"default":"ready"},"period":{"editor":"enum","options":["wk","mtd","qtd","ytd"],"default":"ytd"},"$preview":{"width":1440,"height":900}}'>
+<script type="text/x-dc" data-dc-script data-props='{"dark":{"editor":"boolean","default":false},"embedded":{"editor":"boolean","default":false},"role":{"editor":"enum","options":["agent","manager"],"default":"agent"},"state":{"editor":"enum","options":["ready","loading","empty","error"],"default":"ready"},"board":{"editor":"enum","options":["activity","api","apps"],"default":"activity"},"period":{"editor":"enum","options":["wk","mtd","qtd","ytd"],"default":"ytd"},"$preview":{"width":1440,"height":900}}'>
 class Component extends DCLogic {
   constructor(props) {
     super(props);
-    this.state = { period: null };
+    this.state = { period: null, board: null };
   }
   renderVals() {
     const light = { bg: '#F6F3EC', surface: '#FFFFFF', sunk: '#ECE7DC', ink: '#1F1D1A', mute: '#5A544A', faint: '#6B6558', rule: '#E2DCD0', accent: '#0B5D5E', onAccent: '#FFFFFF', accentTint: '#DCEAE7', warm: '#A63D1A', warmTint: '#F7E4DA', gold: '#855400', goldTint: '#F5EAD3', sideBg: '#EFEBE2', glass: 'rgba(246,243,236,0.86)', pane: '#FBFAF6', heroBg: '#FFFDF7', heroGlow: 'rgba(240,185,58,0.26)', b1: 'linear-gradient(180deg, #F2C14E, #D9A22E)', b2: 'linear-gradient(180deg, #D8D6D0, #B9B6AE)', b3: 'linear-gradient(180deg, #E0A77A, #C27F4F)', bInk: '#1F1D1A', r1: '#D9A22E', r2: '#A8A59D', r3: '#C27F4F', bar: '#9FC9C4', you: '#DCEAE7' };
@@ -204,39 +209,53 @@ class Component extends DCLogic {
       ['M. Lewis', 'South Unit', 2100, 3900, 9100, 22600, 4]
     ];
     const IDX = { wk: 2, mtd: 3, qtd: 4, ytd: 5 };
+    const PI = { wk: 0, mtd: 1, qtd: 2, ytd: 3 };
     const LBL = { wk: 'WK', mtd: 'MTD', qtd: 'QTD', ytd: 'YTD' };
     const WORD = { wk: 'this week', mtd: 'this month', qtd: 'this quarter', ytd: 'this year' };
-    const TITLE = { wk: "Who's leading this week.", mtd: "Who's leading this month.", qtd: "Who's leading the quarter.", ytd: "Who's leading the year." };
+    // SAMPLE activity points per period [wk, mtd, qtd, ytd] — from the points engine (calls, appointments, fact finds, closing interviews).
+    const PTS = { 'S. Mohammed': [180, 820, 2300, 7400], 'A. Ramdial': [240, 900, 2500, 8100], 'K. Baptiste': [150, 700, 2100, 6900], 'R. Singh': [90, 540, 1600, 5200], 'D. Charles': [210, 760, 1900, 6100], 'T. Joseph': [60, 400, 1300, 4300], 'Kyron Marchan': [312, 1050, 2600, 7900], 'N. Ali': [120, 480, 1400, 4600], 'J. Pierre': [40, 260, 900, 3100], 'M. Lewis': [70, 300, 950, 2800] };
+    const board = this.state.board || this.props.board || 'activity';
     const fmt = (n) => 'TTD ' + Math.round(n).toLocaleString('en-US');
+    const num = (n) => Math.round(n).toLocaleString('en-US');
+    const appsP = (a, p) => Math.max(0, Math.round(a[6] * (a[IDX[p]] / (a[5] || 1))));
+    const val = (a, p) => board === 'api' ? a[IDX[p]] : board === 'apps' ? appsP(a, p) : PTS[a[0]][PI[p]];
+    const fmtV = (n) => board === 'api' ? fmt(n) : board === 'apps' ? num(n) + (n === 1 ? ' app' : ' apps') : num(n) + ' pts';
+    const second = (a, p) => board === 'apps' ? fmt(a[IDX[p]]) : appsP(a, p) + ' apps';
+    const BOARD = {
+      activity: { label: 'Activity', col: 'Points', second: 'Apps', noun: 'points', title: "Who's putting in the work ", footer: 'Activity: ranked by points from logged calls, appointments, fact finds and closing interviews in your branch.', empty: 'No activity logged ', emptyLine: 'The board fills in as agents log their calls and meetings.' },
+      api: { label: 'API', col: 'Settled API', second: 'Apps', noun: 'settled API', title: "Who's leading on API ", footer: 'API: ranked by settled API from the policy ledger in your branch.', empty: 'No settled business ', emptyLine: 'The board fills in as policies settle in the ledger.' },
+      apps: { label: 'Apps', col: 'Applications', second: 'Settled API', noun: 'applications', title: "Who's writing the most ", footer: 'Apps: ranked by applications from the policy ledger in your branch.', empty: 'No applications ', emptyLine: 'The board fills in as applications reach the ledger.' }
+    };
+    const B = BOARD[board];
     const initials = (n) => n.split(/[\s.]+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join('').toUpperCase();
-    const rankFor = (p) => A.map((a) => ({ a: a, v: a[IDX[p]] })).sort((x, y) => y.v - x.v);
+    const rankFor = (p) => A.map((a) => ({ a: a, v: val(a, p) })).sort((x, y) => y.v - x.v);
     const ranked = rankFor(period);
     const leader = ranked[0].v || 1;
-    const appsFor = (a) => Math.max(0, Math.round(a[6] * (a[IDX[period]] / (a[5] || 1))));
 
+    const boards = ['activity', 'api', 'apps'].map((k) => ({ label: BOARD[k].label, on: k === board, pick: () => this.setState({ board: k }), bg: k === board ? c.accent : 'transparent', color: k === board ? c.onAccent : c.mute }));
     const periods = ['wk', 'mtd', 'qtd', 'ytd'].map((p) => ({ label: LBL[p], on: p === period, pick: () => this.setState({ period: p }), bg: p === period ? c.surface : 'transparent', color: p === period ? c.ink : c.mute, shadow: p === period ? '0 1px 2px rgba(0,0,0,0.1)' : 'none' }));
 
     const order = [1, 0, 2];
     const H = [150, 110, 80];
     const podium = order.map((i, k) => {
       const e = ranked[i];
-      return { place: i + 1, name: e.a[7] ? 'You' : e.a[0], unit: e.a[1], apps: appsFor(e.a) + ' apps', initials: initials(e.a[0]), api: fmt(e.v), isYou: !!e.a[7], h: H[i], av: i === 0 ? 64 : 52, fs: i === 0 ? 26 : 20, ring: [c.r1, c.r2, c.r3][i], block: [c.b1, c.b2, c.b3][i], blockInk: c.bInk, valColor: i === 0 ? c.gold : c.ink, delay: (k * 80) + 'ms' };
+      return { place: i + 1, name: e.a[7] ? 'You' : e.a[0], unit: e.a[1], second: second(e.a, period), initials: initials(e.a[0]), val: fmtV(e.v), isYou: !!e.a[7], h: H[i], av: i === 0 ? 64 : 52, fs: i === 0 ? 26 : 20, ring: [c.r1, c.r2, c.r3][i], block: [c.b1, c.b2, c.b3][i], blockInk: c.bInk, valColor: i === 0 ? c.gold : c.ink, delay: (k * 80) + 'ms' };
     });
 
     const youIdx = ranked.findIndex((e) => e.a[7]);
-    const visible = [];
-    for (let i = 3; i < Math.min(8, ranked.length); i++) visible.push(i);
     const rows = [];
     const mk = (i) => {
       const e = ranked[i];
       const you = !!e.a[7];
       const pct = Math.round((e.v / leader) * 100);
-      return { isRow: true, isGap: false, rank: i + 1, name: you ? 'You · Kyron' : e.a[0], unit: e.a[1], initials: you ? 'YOU' : initials(e.a[0]), apps: appsFor(e.a), api: fmt(e.v), pct: pct, pctLabel: pct + ' percent of the leader', barColor: you ? c.accent : c.bar, bg: you ? c.you : 'transparent', ring: you ? 'inset 0 0 0 1.5px ' + c.accent : 'none', rankColor: you ? c.accent : c.mute, avBg: you ? c.accent : c.sunk, avFg: you ? c.onAccent : c.mute, weight: you ? 800 : 600, valColor: you ? c.accent : c.ink, hasMove: you && period === 'wk', move: '▲ 2 this week' };
+      return { isRow: true, isGap: false, rank: i + 1, name: you ? 'You · Kyron' : e.a[0], unit: e.a[1], initials: you ? 'YOU' : initials(e.a[0]), second: second(e.a, period), val: fmtV(e.v), pct: pct, pctLabel: pct + ' percent of the leader', barColor: you ? c.accent : c.bar, bg: you ? c.you : 'transparent', ring: you ? 'inset 0 0 0 1.5px ' + c.accent : 'none', rankColor: you ? c.accent : c.mute, avBg: you ? c.accent : c.sunk, avFg: you ? c.onAccent : c.mute, weight: you ? 800 : 600, valColor: you ? c.accent : c.ink, hasMove: you && period === 'wk', move: '▲ 2 this week' };
     };
-    visible.forEach((i) => rows.push(mk(i)));
+    for (let i = 3; i < Math.min(8, ranked.length); i++) rows.push(mk(i));
     if (youIdx >= 8) {
-      rows.push({ isRow: false, isGap: true, gapText: '+' + (youIdx - 8) + ' agents' });
-      rows.push(mk(youIdx - 1)); rows.push(mk(youIdx)); if (youIdx + 1 < ranked.length) rows.push(mk(youIdx + 1));
+      const from = Math.max(8, youIdx - 1);
+      const hidden = from - 8;
+      if (hidden > 0) rows.push({ isRow: false, isGap: true, gapText: '+' + hidden + (hidden === 1 ? ' agent' : ' agents') });
+      for (let i = from; i <= Math.min(youIdx + 1, ranked.length - 1); i++) rows.push(mk(i));
     }
 
     const me = ranked[youIdx];
@@ -253,7 +272,7 @@ class Component extends DCLogic {
 
     return {
       c: c, dark: !!this.props.dark, showChrome: !this.props.embedded, rootW: this.props.embedded ? 1220 : 1440,
-      periods: periods, periodShort: LBL[period], periodWord: WORD[period], title: TITLE[period],
+      boards: boards, periods: periods, periodShort: LBL[period] + ' · ' + B.label.toUpperCase(), periodWord: WORD[period], title: B.title + WORD[period] + '.', colMain: B.col, colSecond: B.second, footer: B.footer, emptyTitle: B.empty + WORD[period] + ' yet', emptyLine: B.emptyLine,
       isManager: role === 'manager', scopeLine: 'South branch · ' + A.length + ' agents',
       isReady: st === 'ready', isLoading: st === 'loading', isEmpty: st === 'empty', isError: st === 'error',
       skeleton: [1, 2, 3, 4, 5],
@@ -263,9 +282,9 @@ class Component extends DCLogic {
         { kind: 'big-week', title: 'Activity winner', name: 'You', value: '312 points' }
       ],
       podium: podium, rows: rows,
-      you: { rankBig: '#' + (youIdx + 1), of: A.length, api: fmt(me.v), toPass: above ? fmt(gap) : 'You lead', toPassWho: above ? 'to pass ' + above.a[0] + ' (' + fmt(above.v) + ')' : 'Nobody above you', passPct: above ? Math.round((me.v / above.v) * 100) : 100, passAria: above ? Math.round((me.v / above.v) * 100) + ' percent of the way to the next agent' : 'You lead' },
+      you: { rankBig: '#' + (youIdx + 1), of: A.length, valLine: fmtV(me.v) + (board === 'api' ? ' settled' : ''), toPass: above ? fmtV(gap) : 'You lead', toPassWho: above ? 'to pass ' + above.a[0] + ' (' + fmtV(above.v) + ')' : 'Nobody above you', passPct: above ? Math.round((me.v / above.v) * 100) : 100, passAria: above ? Math.round((me.v / above.v) * 100) + ' percent of the way to the next agent' : 'You lead' },
       rankCols: rankCols, rankAria: 'Your rank: ' + rankCols.map((r) => r.label + ' ' + r.rank).join(', '),
-      share: { pct: (share * 100).toFixed(1) + '%', dash: (share * circ).toFixed(1) + ' ' + circ.toFixed(1), line: fmt(me.v) + ' of ' + fmt(total), aria: 'Your share of branch settled API: ' + (share * 100).toFixed(1) + ' percent' }
+      share: { title: 'Your share of branch ' + B.noun, pct: (share * 100).toFixed(1) + '%', dash: (share * circ).toFixed(1) + ' ' + circ.toFixed(1), line: fmtV(me.v) + ' of ' + fmtV(total), aria: 'Your share of branch ' + B.noun + ': ' + (share * 100).toFixed(1) + ' percent' }
     };
   }
 }
