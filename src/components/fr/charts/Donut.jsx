@@ -93,14 +93,15 @@ export default function Donut({
           </div>
         ) : null}
       </div>
-      {/* min-w: below it the legend wraps UNDER the ring instead of squeezing
-          beside it (fr-fit-any-width decision 3) — a row needs room for its value
-          and share; only the label truncates. */}
-      <ul className="min-w-[min(100%,13rem)] flex-1 space-y-1.5">
+      {/* min-w-min: the legend is never narrower than its values and shares
+          need (the label counts for 3rem in that minimum — it truncates), so
+          when they do not fit beside the ring the legend wraps UNDER it
+          instead of squeezing (fr-fit-any-width decision 3). */}
+      <ul className="min-w-min flex-1 space-y-1.5">
         {arcs.map((a) => (
           <li key={a.key} className="flex items-center gap-2 text-[13px]">
             <span className={`h-2.5 w-2.5 flex-none rounded-sm ${BG[a.i]}`} aria-hidden="true" />
-            <span className="min-w-0 flex-1 truncate text-ink-muted" title={a.label}>
+            <span className="min-w-[3rem] flex-1 truncate text-ink-muted [contain:inline-size]" title={a.label}>
               {a.label}
             </span>
             <span className="flex-none font-semibold tabular-nums text-ink">{format(a.value)}</span>
