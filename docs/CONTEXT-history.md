@@ -2153,3 +2153,33 @@ Three PRs, all work, no deploy needed. #1032 (`e00ce083`, F-1): `lapsePolicy` no
 Kyron's rulings of 30-09-2026: 1A - Career reads YTD applications through `extractFields` (slice F-3); 2B - a manager may not override a head-office status (slice F-4, a `firestore.rules` change that needs a rules deploy after merge).
 
 **Next:** brief section 5 in `docs/briefs/fr-round2-followups.md`: F-3 (HIGH FU), then F-4 (rules change, rules deploy after merge). Both human-merge.
+
+---
+
+## Archived from CONTEXT.md - 2026-10-01 consolidated fill (PRs #1043, #1041)
+
+### Recently shipped row (dropped when the #1043/#1041 row became the 6th row)
+
+| [#1022–#1031](https://github.com/Kelsean868/agencytrack/pulls?q=is%3Apr+1022..1031) | `f91e8025` … `02c6dfdd` | **FR round 2 follow-ups.** R2-8 Game plan FR port re-landed (#1022 `f91e8025`, after #1020's squash dropped it) with its scene fix (#1023 `c298c538`); R2-2b hides the Persistency tab's trend chart under FR (#1030 `87ef57f0`); R2-6b a new lapse clears a stale reinstatement declaration, both import paths (#1028 `f7d0010a`, functions deployed); R2-1b payouts judged on 2 decimals (#1027 `d9ba21c3`, Kyron ruled 89.994 → 89.99 → not paid); R2-11 Leaderboard (#1025 `abfcda30`), R2-7 Commission playground (#1024 `c2e2b257`) and R2-10 Career (#1026 `02c6dfdd`) FR ports; #1031 `ab9a8142` is the docs-only A-1 audit. |
+
+### Last updated - entry 3
+
+**FR round 2c SHIPPED (2026-09-30); one consolidated fill for #1034, #1035, #1036 (Rule 16(c)).** Ledger (PR · squash · Rule 16(b) class): #1036 `ee1e4bcd` work (clears the root npm audit highs: `@grpc/grpc-js` override, `dompurify` 3.4.16; `package.json` + `package-lock.json`; unblocks CI's "Audit dependencies" step) · #1034 `a70f180f` work (F-3 Career reads applications through `extractFields`, all schemas) · #1035 `ad544d62` work (F-4 a manager may not change a head-office status: `firestore.rules` Arm D + `lapsePolicy` guard). **Deploy:** the deploy-gated trigger fired on `firestore.rules` +6 (#1035); **rules DEPLOYED by Kyron 2026-09-30 (`firebase deploy --only firestore:rules`), reported by Kyron**; no functions or index change. **Kyron's rulings of 30-09-2026:** 1A (a producing manager keeps the own-policy path, Arm B) and 2B (hide head-office policies on the Lapse tab; follow-up PR open, see FOLLOW_UPS § Lapse tab: hide head-office policies (after F-4)).
+
+### Current main HEAD - entry 3
+
+`ad544d62` (PR #1035 squash - F-4 manager may not change a head-office status; the last work squash of round 2c). Merges `2026-09-30T19:13:36Z` (#1036) to `2026-09-30T19:29:48Z` (#1035). **Deploy-gated trigger FIRED (rules only):** `git diff --stat 1966fb53..ad544d62 -- firestore.rules firestore.indexes.json storage.rules functions/` printed `firestore.rules | 6 ++++++`, 1 file changed, 6 insertions(+). Covered by the rules deploy Kyron reported 2026-09-30 (`firebase deploy --only firestore:rules`). No functions or index change.
+
+### Active track - entry 3
+
+**FR round 2 follow-ups, tail** (`docs/briefs/fr-round2-followups.md` § 5): only the 2B Lapse-tab UI PR remains (hide head-office policies on the Lapse tab, human-merge); then the queue is clear for this brief. Everything FR still sits behind the per-user agent opt-in; flipping FR to the default stays out of scope (brief FR-D12).
+
+### Where we left off - PRIOR block (oldest)
+
+**PRIOR - 2026-09-30. FR round 2c merged: #1036, #1034, #1035 (last work squash `ad544d62`).**
+
+Three PRs, all work. #1036 (`ee1e4bcd`): clears the root npm audit highs (`@grpc/grpc-js` override, `dompurify` 3.4.16), so CI's "Audit dependencies" step passes. #1034 (`a70f180f`, F-3): Career reads applications through `extractFields` across all schemas. #1035 (`ad544d62`, F-4): `firestore.rules` Arm D now also requires the policy not to be head-office settled, and `lapsePolicy` refuses such a policy. **Rules DEPLOYED by Kyron 2026-09-30 (`firebase deploy --only firestore:rules`), reported by Kyron.**
+
+Kyron's rulings of 30-09-2026: 1A - a producing manager keeps the own-policy path (Arm B); 2B - hide head-office policies on the Lapse tab (follow-up PR open, FOLLOW_UPS § Lapse tab: hide head-office policies (after F-4)).
+
+**Next:** the 2B Lapse-tab UI PR (human-merge); then the queue is clear for `docs/briefs/fr-round2-followups.md`.
