@@ -119,6 +119,8 @@ export function keyIndexes(values) {
 // Tailwind generates them.
 const LABEL_CHAR_PX = 6.6; // 11px semibold tabular figures
 const LABEL_GAP_PX = 8;
+/** One value-label line (11px text, ~16px box): bar tops this far apart never collide. */
+export const LABEL_LINE_PX = 16;
 const RAISE_STEPS = [
   [16, 'mb-5 @[16rem]:mb-1'],
   [20, 'mb-5 @[20rem]:mb-1'],

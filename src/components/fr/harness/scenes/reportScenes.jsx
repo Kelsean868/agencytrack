@@ -14,7 +14,11 @@ import { ymdUTC } from '../../../../utils/dateInputs';
  * weekly reports here. Awards, the Production report and Week fetch their own
  * data, so they stay covered by the real-app sweep (fr-width-real-app.mjs).
  */
-const SUNDAY_ONE = Date.UTC(2026, 0, 4); // 4 Jan 2026 is a Sunday
+// HistoryTab shows the CURRENT year, so the sample weeks are built in it:
+// from the first Sunday of this year (fixed 2026 data would go empty in 2027).
+const YEAR = new Date().getFullYear();
+const JAN1 = Date.UTC(YEAR, 0, 1);
+const SUNDAY_ONE = JAN1 + ((7 - new Date(JAN1).getUTCDay()) % 7) * 86_400_000;
 const DAY = 86_400_000;
 const SUBMISSIONS = Array.from({ length: 39 }, (_, i) => {
   const weekStarting = ymdUTC(new Date(SUNDAY_ONE + i * 7 * DAY));
@@ -32,7 +36,7 @@ const SUBMISSIONS = Array.from({ length: 39 }, (_, i) => {
     appointmentsSet: 4 + (i % 3),
   };
 });
-const NOW = new Date('2026-09-30T12:00:00Z');
+const NOW = new Date(Date.UTC(YEAR, 8, 30, 12)); // 30 Sep of the sample year
 
 function HistoryScene() {
   return (

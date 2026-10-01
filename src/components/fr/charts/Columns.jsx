@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { niceMax, tipAlign, highlightLabelClass } from './scales';
+import { niceMax, tipAlign, highlightLabelClass, LABEL_LINE_PX } from './scales';
 
 /**
  * Columns — vertical bars (one series, optional "waiting" ghost stacked on
@@ -50,7 +50,17 @@ function ColumnsPlot({ data, target, targetLabel, height = 160, format = String,
   const toPx = (v) => round2(Math.min(height, Math.max(0, ((v || 0) / max) * height)));
   const anyHighlight = data.some((d) => d.highlight);
   const last = data.length - 1;
-  const hiLabel = highlightLabelClass(data.map((d) => format(d.value || 0)), data.findIndex((d) => d.highlight));
+  // Raise one label when the highlighted and last labels could collide. Each
+  // label sits on its own stacked bar (value + ghost). If the two bar tops
+  // already differ by a label's height, nothing collides and nothing moves;
+  // otherwise the label on the TALLER bar goes up a line, which always opens a
+  // full line between them (raising the shorter one could land it on the other).
+  const hiIdx = data.findIndex((d) => d.highlight);
+  const stackPx = (d) => toPx(d.value) + toPx(Math.max(0, d.ghost || 0));
+  const raiseCls = highlightLabelClass(data.map((d) => format(d.value || 0)), hiIdx);
+  const apart = hiIdx < 0 || hiIdx === last || Math.abs(stackPx(data[hiIdx]) - stackPx(data[last])) >= LABEL_LINE_PX;
+  const raiseIdx = apart ? -1 : stackPx(data[hiIdx]) >= stackPx(data[last]) ? hiIdx : last;
+  const labelCls = (i) => (i === raiseIdx ? raiseCls : 'mb-1');
 
   return (
     <div className="@container">
@@ -100,7 +110,7 @@ function ColumnsPlot({ data, target, targetLabel, height = 160, format = String,
                     {d.highlight || i === last ? (
                       <span
                         aria-hidden="true"
-                        className={`absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold tabular-nums text-ink ${d.highlight && i !== last ? hiLabel : 'mb-1'}`}
+                        className={`absolute bottom-full left-1/2 -translate-x-1/2 whitespace-nowrap text-[11px] font-semibold tabular-nums text-ink ${labelCls(i)}`}
                       >
                         {valueText}
                       </span>
