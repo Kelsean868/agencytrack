@@ -235,12 +235,15 @@ function YearHeatmap({ submissions, year, weeklyTarget, bestWeekWs, awardWeekSet
     return 'bg-primary/15';
   }
 
-  // Month label positions
-  const monthLabels = [];
-  let lastMonth = null;
-  sundays.forEach((ws, i) => {
+  // Weeks grouped by month. Each month's label sits on top of its own weeks
+  // and the groups wrap together (fr-fit-any-width W-4): a fixed 20px-per-week
+  // label row ran past a narrow card and drifted off the wrapped squares.
+  const monthGroups = [];
+  sundays.forEach((ws) => {
     const mo = ws.slice(5, 7);
-    if (mo !== lastMonth) { monthLabels.push({ i, label: MONTH_ABBR[parseInt(mo, 10) - 1] }); lastMonth = mo; }
+    const last = monthGroups[monthGroups.length - 1];
+    if (last && last.mo === mo) last.weeks.push(ws);
+    else monthGroups.push({ mo, label: MONTH_ABBR[parseInt(mo, 10) - 1], weeks: [ws] });
   });
 
   return (
@@ -250,18 +253,15 @@ function YearHeatmap({ submissions, year, weeklyTarget, bestWeekWs, awardWeekSet
         <p className="text-[10px] text-ink-muted font-mono">Target {fmtTtdFull(weeklyTarget)}/wk</p>
       </div>
 
-      {/* Month labels */}
-      <div className="relative h-4 mb-1">
-        {monthLabels.map(({ i, label }) => (
-          <span key={`${label}-${i}`} className="absolute text-[9px] font-bold text-ink-muted font-mono tracking-widest" style={{ left: i * 20 }}>
-            {label}
-          </span>
-        ))}
-      </div>
-
-      {/* Squares */}
-      <div className="flex flex-wrap gap-[3px]" style={{ width: '100%' }}>
-        {sundays.map((ws) => {
+      {/* Month groups: label over its weeks; groups wrap as one unit */}
+      <div className="flex flex-wrap gap-x-[3px] gap-y-2" style={{ width: '100%' }}>
+        {monthGroups.map((g) => (
+          <div key={`${g.label}-${g.weeks[0]}`} className="flex flex-col gap-1">
+            <span className="h-4 whitespace-nowrap text-[9px] font-bold text-ink-muted font-mono tracking-widest">
+              {g.label}
+            </span>
+            <div className="flex gap-[3px]">
+        {g.weeks.map((ws) => {
           const s = byWeekStart[ws];
           const st = s ? deriveStatus(s) : null;
           const isBest = ws === bestWeekWs;
@@ -298,6 +298,9 @@ function YearHeatmap({ submissions, year, weeklyTarget, bestWeekWs, awardWeekSet
             </div>
           );
         })}
+            </div>
+          </div>
+        ))}
       </div>
 
       {longestStreak >= 2 && (
@@ -360,9 +363,10 @@ function HistoryFilterRow({
     { key: 'unlocked',  label: 'Unlocked',  count: counts.unlocked },
   ];
   return (
-    <div className="flex flex-wrap items-center gap-2 flex-1">
-      {/* Status segmented */}
-      <div className="flex items-center gap-1 p-1 rounded-xl border border-border bg-surface-muted overflow-x-auto">
+    <div className="flex min-w-0 flex-wrap items-center gap-2 flex-1">
+      {/* Status segmented — max-w-full: on a phone it scrolls inside itself
+          instead of widening the page (fr-fit-any-width W-4) */}
+      <div className="flex max-w-full items-center gap-1 p-1 rounded-xl border border-border bg-surface-muted overflow-x-auto">
         {tabs.map(t => (
           <button
             key={t.key}
@@ -487,7 +491,7 @@ function WeekCard({ s, prevS, sparkValues, isBest, isAward, onClick }) {
     <button
       onClick={onClick}
       aria-label={`Open submission from ${weekLabel(s)}`}
-      className={`card w-full text-left p-4 hover:shadow-md transition-shadow border ${borderColor}`}
+      className={`@container card w-full text-left p-4 hover:shadow-md transition-shadow border ${borderColor}`}
     >
       {/* Top row */}
       <div className="flex items-start justify-between gap-3 mb-3">
@@ -524,8 +528,8 @@ function WeekCard({ s, prevS, sparkValues, isBest, isAward, onClick }) {
         </span>
       </div>
 
-      {/* KPI 4-up grid */}
-      <div className="grid grid-cols-4 gap-2 mb-3">
+      {/* KPI grid — 4 up when the card has 24rem, else 2 up (fr-fit-any-width W-4) */}
+      <div className="grid grid-cols-2 gap-2 mb-3 @[24rem]:grid-cols-4">
         {[
           { label: 'API',   value: `TTD ${fmtTtdShort(api)}`,  delta: apiDelta !== null ? Math.round(apiDelta / 100) : null, deltaLabel: apiDelta ? fmtTtdShort(Math.abs(apiDelta)) : null },
           { label: 'APPS',  value: apps,                         delta: appsDelta,  deltaLabel: appsDelta ? Math.abs(appsDelta) : null },
