@@ -297,3 +297,51 @@ describe('FR Leaderboard — three boards (L-2)', () => {
     expect(screen.getByTestId('fr-leaderboard-empty')).toBeInTheDocument();
   });
 });
+
+describe('FR Leaderboard — "to pass" on a tie (Amendment A2)', () => {
+  // 'a' and 'me' are level on every metric; the name breaks the tie, so you are #2 on all three boards.
+  const tieEntry = (agentId, name, periodApi, apps, points, rank) => ({
+    agentId, name, unitId: 'um-1', unitName: "Lee's Unit", periodApi, apps, points, rank, rankWithinUnit: rank, previousRank: null, previousRanks: null,
+  });
+  const tied = (aboveName) => ({
+    week: [], mtd: [], qtd: [],
+    ytd: [tieEntry('a', aboveName, 500, 5, 50, 1), tieEntry('me', 'Agent me', 500, 5, 50, 2), tieEntry('c', 'Agent c', 100, 1, 10, 3)],
+  });
+  const topass = () => screen.getByTestId('fr-leaderboard-topass').textContent;
+  const LABEL = 'To pass the next agent';
+  const BOARDS = [['activity', '1 pts'], ['api', 'TTD 1'], ['apps', '1 app']];
+
+  it.each(BOARDS)('%s: one unit of the board, and "Tied with {name} (#{rank}) · 1 more to pass"', (board, one) => {
+    leaderboard(tied('Agent a'));
+    render(<FrLeaderboard />);
+    pickBoard(board);
+    expect(LEADERBOARD_BOARDS[board].format(1)).toBe(one);
+    expect(topass()).toBe(`${LABEL}${one}Tied with Agent a (#1) · 1 more to pass`);
+    expect(topass()).not.toContain('to pass Agent a');
+  });
+
+  it.each(BOARDS)('%s: with no name for the agent above → "Tied with #{rank} · 1 more to pass"', (board, one) => {
+    leaderboard(tied(''));
+    render(<FrLeaderboard />);
+    pickBoard(board);
+    expect(topass()).toBe(`${LABEL}${one}Tied with #1 · 1 more to pass`);
+  });
+
+  it('keeps the progress bar: at 100% on a tie', () => {
+    leaderboard(tied('Agent a'));
+    render(<FrLeaderboard />);
+    expect(within(screen.getByTestId('fr-leaderboard-topass')).getByRole('img').getAttribute('aria-label')).toBe("You are at 100% of #1's points");
+  });
+
+  it.each(['activity', 'api', 'apps'])('%s: not tied → the gap and "to pass {name} (#{rank})" are unchanged', (board) => {
+    leaderboard({
+      week: [], mtd: [], qtd: [],
+      ytd: [tieEntry('a', 'Agent a', 900, 9, 90, 1), tieEntry('me', 'Agent me', 500, 5, 50, 2), tieEntry('c', 'Agent c', 100, 1, 10, 3)],
+    });
+    render(<FrLeaderboard />);
+    pickBoard(board);
+    const gap = { activity: 40, api: 400, apps: 4 }[board];
+    expect(topass()).toBe(`${LABEL}${LEADERBOARD_BOARDS[board].format(gap)}to pass Agent a (#1)`);
+    expect(topass()).not.toContain('Tied');
+  });
+});

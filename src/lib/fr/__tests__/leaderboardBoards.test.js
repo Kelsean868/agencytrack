@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   LEADERBOARD_BOARDS, BOARD_ORDER, DEFAULT_BOARD, boardConfig, rankBoard, boardByPeriod, scopeBoard,
 } from '../leaderboardBoards';
-import { boardView } from '../leaderboardModel';
+import { boardView, toPass } from '../leaderboardModel';
 
 // FR Leaderboard L-2 — the board config (D10–D12) and the per-board ranking.
 
@@ -145,5 +145,37 @@ describe('boardView', () => {
     const v = boardView({ byPeriod: { week: [], mtd: [], qtd: [], ytd }, activeField: 'ytd', board: 'activity', scope: 'branch', targetUnitId: null, viewerUid: 'me', phone: true });
     expect(v.aroundMeMobile.state).toBe('CLUSTER_2_LAST');
     expect(v.aroundMeMobile.gapToNext).toBe(42); // x8 has 92 points, you have 50
+  });
+});
+
+// Amendment A2 — "to pass" on a tie. The ranker (D7) still ranks you below the
+// agent you are tied with, so the gap is 0; `tied` lets the view word it.
+describe('toPass on a tie (A2)', () => {
+  // 'a' and 'me' are level on every metric; the name breaks the tie, so 'me' is #2 on all three boards.
+  const tiedYtd = [
+    entry('a', 'u1', 500, 5, 50), entry('me', 'u1', 500, 5, 50), entry('c', 'u1', 100, 1, 10),
+  ];
+  const view = (board, ytd = tiedYtd) => boardView({ byPeriod: { week: [], mtd: [], qtd: [], ytd }, activeField: 'ytd', board, scope: 'branch', targetUnitId: null, viewerUid: 'me', phone: false });
+
+  it.each(['activity', 'api', 'apps'])('%s: level with the agent above is tied, with a gap of 0', (board) => {
+    expect(view(board).you.rank).toBe(2);
+    expect(view(board).toPass).toEqual({ lead: false, tied: true, gap: 0, aboveName: 'Agent a', aboveRank: 1, aboveValue: expect.any(Number), pct: 100 });
+  });
+
+  it.each(['activity', 'api', 'apps'])('%s: behind the agent above is not tied (unchanged)', (board) => {
+    const behind = [entry('a', 'u1', 900, 9, 90), entry('me', 'u1', 500, 5, 50), entry('c', 'u1', 100, 1, 10)];
+    const t = view(board, behind).toPass;
+    expect(t).toMatchObject({ lead: false, tied: false, aboveName: 'Agent a', aboveRank: 1 });
+    expect(t.gap).toBeGreaterThan(0);
+  });
+
+  it('leading is still just { lead: true }', () => {
+    const lead = [entry('me', 'u1', 900, 9, 90), entry('a', 'u1', 500, 5, 50)];
+    expect(view('api', lead).toPass).toEqual({ lead: true });
+  });
+
+  it('a tie with no name for the agent above still reads as tied', () => {
+    const standing = { ytd: { rank: 2, value: 40, aboveRank: 1, aboveValue: 40, gapUp: 0 } };
+    expect(toPass(standing, 'ytd', [])).toMatchObject({ lead: false, tied: true, gap: 0, aboveName: null, aboveRank: 1 });
   });
 });

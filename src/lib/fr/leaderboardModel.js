@@ -47,7 +47,11 @@ export function rankColumns(standing, activeField) {
  * (branch-wide), measured in the board's metric. The name of the agent above
  * is looked up in the same period's branch ranking by rank.
  *
- * @returns {null | { lead: true } | { lead: false, gap: number, aboveName: string|null,
+ * `tied` (Amendment A2): true when you are not leading and the gap to the agent
+ * above is 0 or less. The ranker (D7) still ranks you below that agent (tie-break
+ * on the other metrics, then name), so the view words a tie as "1 more to pass".
+ *
+ * @returns {null | { lead: true } | { lead: false, tied: boolean, gap: number, aboveName: string|null,
  *           aboveRank: number, aboveValue: number, pct: number }}
  */
 export function toPass(standing, activeField, branchRanking) {
@@ -58,9 +62,11 @@ export function toPass(standing, activeField, branchRanking) {
   const above = (branchRanking ?? []).find((e) => e.rank === s.aboveRank) ?? null;
   const aboveValue = num(s.aboveValue ?? s.aboveApi);
   const value = num(s.value ?? s.api);
+  const gap = num(s.gapUp);
   return {
     lead: false,
-    gap: num(s.gapUp),
+    tied: gap <= 0,
+    gap,
     aboveName: above?.name ?? null,
     aboveRank: s.aboveRank,
     aboveValue,
