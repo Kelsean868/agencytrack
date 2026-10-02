@@ -19,6 +19,8 @@
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
 | Sunday cron weekly drafts go stale: written once at Sun 23:00 TT and never re-aggregated when a day is edited later (staging week 2026-08-23: days 52 pts, draft 39 pts); unit and branch managers get no draft at all (banked 2026-10-01, FR Leaderboard L-1 Phase 1) | MEDIUM | Daily → weekly aggregator | — | see § Sunday cron weekly drafts go stale |
+| Production Leaderboard (Nexus) lists the agent above you twice when you sit at rank 9 (desktop): ranks 4–8 are shown, then the around-me cluster starts with rank 8 again. The FR Leaderboard was fixed in L-2 (banked 2026-10-01, FR Leaderboard L-2) | LOW | Leaderboard (Nexus) | — | see § Nexus leaderboard repeats rank 8 for a viewer at rank 9 |
+| FR Leaderboard "to pass" reads "0 apps" / "0 pts" when you are tied with the agent above (the tie is broken by API, then name); wording for a tie needs a ruling (banked 2026-10-01, FR Leaderboard L-2) | LOW | FR redesign / Leaderboard | — | see § FR Leaderboard to-pass on a tie |
 | Leaderboard month/quarter Activity reads 0 in the first days of a period: a week is placed by its `weekStarting` and never split, so the week that crosses into the new month counts for the old one (seen on staging 1 Oct 2026). Rule kept by Kyron 1 Oct 2026 (banked 2026-10-01, FR Leaderboard L-1) | LOW | Leaderboard / FR | — | see § Leaderboard month-start Activity reads 0 |
 | Leaderboard aggregate takes the load year from the server (UTC) clock, not TT: from TT Dec 31 20:00 to 23:59 it loads the NEXT year's reports and days, so YTD points (and, before L-1, YTD API) collapse for 4 hours (banked 2026-10-01, CodeRabbit on #1045) | LOW | Leaderboard / functions | — | see § Leaderboard aggregate load year uses the UTC clock |
 | `rankForLeaderboard` in `functions/leaderboard/rankingLogic.js` has no runtime caller after FR Leaderboard L-1 (kept only by its cross-check test) (banked 2026-10-01) | LOW | Leaderboard / functions | — | see § rankForLeaderboard has no runtime caller after L-1 |
@@ -8340,3 +8342,25 @@ Ledger API and Apps are not affected: they are dated per policy by `dateIssued`.
 **Options if this is revisited:** (a) split a week's points by day for days that have daily entries (a submitted report cannot be split); (b) show the current week next to MTD on the board during the first week of a month; (c) leave as is (current ruling).
 
 **Falsification (Rule 23):** overturned if the aggregate is changed to date points per day (`functions/leaderboard/boardMetrics.js`, `metricsFor`).
+
+## Nexus leaderboard repeats rank 8 for a viewer at rank 9
+
+**Banked 2026-10-01 from FR Leaderboard L-2. Severity: LOW.**
+
+**Observed:** `ProductionLeaderboardSurface.jsx` renders the tail (ranks 4–8 on desktop) and then `AroundMeClusterDesktop` with `computeAroundMe(...).rows`. For a viewer at rank 9 (`visibleMax` 8 + 1), the cluster is prev · you · next, and prev is rank 8, which the tail already shows. Rank 8 appears twice. Earlier samples and the live test branch never put the viewer at exactly rank 9, so it went unseen.
+
+**FR Leaderboard:** fixed in L-2. `boardRows` in `src/lib/fr/leaderboardModel.js` skips cluster rows already listed. It surfaced there because each board puts the viewer at a different rank (harness Apps board: you at #9).
+
+**Fix shape:** the same filter in the Nexus surface (skip `aroundMeDesktop.rows` entries whose `agentId` is in `tail.slice(0, 5)`), with a component test at rank 9. If both views keep showing the agent above, drop it from the cluster only when it is already in the tail.
+
+**Falsification (Rule 23):** overturned if `AroundMeClusterDesktop` already drops rows that the tail shows (check its row map at `src/components/leaderboard/AroundMeCluster.jsx`).
+
+## FR Leaderboard to-pass on a tie
+
+**Banked 2026-10-01 from FR Leaderboard L-2. Severity: LOW.**
+
+**Observed:** the ranker (brief D7) breaks a tie on the board's metric by the other metrics, then name. When you are tied with the agent above, "To pass the next agent" shows a gap of 0 (harness Apps board: "0 apps · to pass [Agent F] (#8)"). The number is true; the sentence reads oddly.
+
+**Options (needs a ruling, copy is design):** (a) keep as is; (b) say "Tied with [name] — [one more] to pass" (one more point / app / TTD 1); (c) hide the gap and show "Tied with [name]".
+
+**Falsification (Rule 23):** closed if the ranker stops breaking ties (equal values share a rank), which would change D7.

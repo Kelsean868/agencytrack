@@ -227,7 +227,7 @@ export function AroundMeClusterDesktop({
 // Mobile — sticky bar fixed above the bottom-nav; tap-to-expand sheet
 // ─────────────────────────────────────────────────────────────────────────────
 
-function MobileExpandedRow({ entry, isViewer, viewerName }) {
+function MobileExpandedRow({ entry, isViewer, viewerName, valueFor, formatValue }) {
   const isUnrankedRow = entry == null;
   const displayName = isUnrankedRow
     ? `You · ${firstNameOf(viewerName)}`
@@ -292,11 +292,15 @@ function MobileExpandedRow({ entry, isViewer, viewerName }) {
         ) : null}
       </div>
       <div className="text-sm font-bold text-primary font-display tabular-nums">
-        {isUnrankedRow ? 'TTD 0' : formatCurrency(entry.periodApi ?? 0)}
+        {formatValue(isUnrankedRow ? 0 : valueFor(entry))}
       </div>
     </div>
   );
 }
+
+// `valueFor` / `formatValue` (FR Leaderboard L-2): which figure the bar shows and
+// how. The defaults are the Production Leaderboard's API figure, unchanged.
+const apiOf = (e) => e?.periodApi ?? 0;
 
 export function AroundMeClusterMobile({
   state,
@@ -306,6 +310,8 @@ export function AroundMeClusterMobile({
   gapToNext,
   prevRank,
   viewerName,
+  valueFor = apiOf,
+  formatValue = formatCurrency,
 }) {
   const [expanded, setExpanded] = useState(false);
   const barRef = useRef(null);
@@ -341,7 +347,7 @@ export function AroundMeClusterMobile({
 
   const isUnranked = state === 'CLUSTER_UNRANKED';
   const viewerRankLabel = isUnranked ? '—' : (viewerEntry?.rank ?? '—');
-  const viewerApi = isUnranked ? 0 : (viewerEntry?.periodApi ?? 0);
+  const viewerValue = isUnranked ? 0 : valueFor(viewerEntry);
   const viewerDisplayName = isUnranked
     ? `You · ${firstNameOf(viewerName)}`
     : `You · ${firstNameOf(viewerEntry?.name)}`;
@@ -372,6 +378,8 @@ export function AroundMeClusterMobile({
               entry={entry}
               isViewer={viewerEntry && entry.agentId === viewerEntry.agentId}
               viewerName={viewerName}
+              valueFor={valueFor}
+              formatValue={formatValue}
             />
           ))}
         </div>
@@ -422,7 +430,7 @@ export function AroundMeClusterMobile({
                 <>
                   {' · '}
                   <span className="text-ink">
-                    {formatCurrency(gapToNext)} behind #{prevRank}
+                    {formatValue(gapToNext)} behind #{prevRank}
                   </span>
                 </>
               )}
@@ -431,7 +439,7 @@ export function AroundMeClusterMobile({
 
           {/* Period API */}
           <div className="text-sm font-bold font-display text-primary tabular-nums">
-            {formatCurrency(viewerApi)}
+            {formatValue(viewerValue)}
           </div>
 
           {/* Expand chevron — rotates 180° on expand */}

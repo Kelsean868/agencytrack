@@ -334,6 +334,33 @@ describe('AroundMeClusterMobile — tap-expand interaction', () => {
     expect(screen.queryByTestId('around-me-mobile-expanded')).not.toBeInTheDocument();
   });
 
+  it('valueFor / formatValue swap the figure (FR Leaderboard L-2); the default stays API', () => {
+    const { unmount } = render(
+      <AroundMeClusterMobile
+        state="CLUSTER_3"
+        rows={[{ ...PREV, points: 900 }, { ...VIEWER, points: 640 }, { ...NEXT, points: 500 }]}
+        viewerEntry={{ ...VIEWER, points: 640 }}
+        totalCount={28}
+        gapToNext={260}
+        prevRank={13}
+        viewerName="Priya Gopaul"
+        valueFor={(e) => e?.points ?? 0}
+        formatValue={(n) => `${n} pts`}
+      />
+    );
+    const bar = screen.getByTestId('around-me-mobile');
+    expect(bar.textContent).toContain('260 pts behind #13');
+    expect(bar.textContent).toContain('640 pts');
+    expect(bar.textContent).not.toContain('TTD');
+    fireEvent.click(screen.getByRole('button', { name: /Your position/ }));
+    expect(screen.getByTestId('around-me-mobile-expanded').textContent).toContain('900 pts');
+    unmount();
+    render(
+      <AroundMeClusterMobile state="CLUSTER_3" rows={[PREV, VIEWER, NEXT]} viewerEntry={VIEWER} totalCount={28} gapToNext={1500} prevRank={13} viewerName="Priya Gopaul" />
+    );
+    expect(screen.getByTestId('around-me-mobile').textContent).toContain('TTD 1,500 behind #13');
+  });
+
   it('the collapsed bar shows rank-of-total and "X behind #N" gap copy', () => {
     render(
       <AroundMeClusterMobile
