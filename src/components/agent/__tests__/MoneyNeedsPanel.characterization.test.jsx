@@ -16,7 +16,7 @@
  */
 import React from 'react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 import { makeWorksheet, ROLLUP, YEAR, TENANT, UID } from './moneyNeedsCharFixtures';
 
 vi.mock('../../../context/AuthContext', () => ({
@@ -52,7 +52,13 @@ const KEY = 'agencytrack-playground-income-goal';
 
 async function renderLoaded(ws = makeWorksheet(), props = {}) {
   mockGetMoneyNeeds.mockResolvedValue(ws);
-  const utils = render(<MoneyNeedsPanel {...props} />);
+  // Render inside an async act so the mocked load AND the effects it triggers
+  // (e.g. CommissionTargetsPanel's worksheet -> targets sync) settle before the
+  // test interacts. Without this, findByRole can resolve on the DOM commit while
+  // that passive effect is still pending; under CI load it then flushes after
+  // the test's first fireEvent and overwrites the typed value with the loaded one.
+  let utils;
+  await act(async () => { utils = render(<MoneyNeedsPanel {...props} />); });
   await screen.findByRole('button', { name: /Business Expenses/i });
   return { ws, ...utils };
 }
