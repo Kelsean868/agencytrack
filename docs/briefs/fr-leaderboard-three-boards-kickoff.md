@@ -162,3 +162,25 @@ Rest Assured board · manager/SM leaderboard surfaces · lifetime `leaderboard/{
 ### FU to bank in L-1b (Rule 7(b), append at end)
 
 Client `computeTotalNewNames` (`src/utils/extractFields.js:157`) omits `namesFromSeminarsAttended` and `namesFromTradeshowsConducted`, which the wizard total and the server `extractActivityFields` count. The surfaces still on client `extractFields` under-count event names. Severity LOW.
+
+---
+
+## Amendment A2 (2 Oct 2026): "To pass" copy on a tie
+
+**Why.** The ranker (D7) breaks a tie on the board's metric by the other metrics, then name. So an agent tied with the agent above still ranks below, and the "To pass the next agent" card shows a gap of 0, for example "0 apps · to pass Agent F (#8)". The number is true, but the sentence reads oddly. Kyron's ruling (2 Oct 2026): option (b) of FOLLOW_UPS § FR Leaderboard to-pass on a tie.
+
+### Decisions locked (A2)
+
+- **A2-D1, when it applies.** `toPass(...)` (`src/lib/fr/leaderboardModel.js`) returns `lead: false` and `gap <= 0`. D7 is unchanged; equal values still get different ranks.
+- **A2-D2, copy** (in `src/components/fr/compete/FrLeaderboardView.jsx`, the `fr-leaderboard-topass` card):
+  - The label stays `To pass the next agent` (or `… in the branch`).
+  - The big value shows **one unit of the board's metric** through the board's own `config.format(1)`: Activity `1 pts`, as the existing `format` prints it; API `formatCurrency(1)`; Apps `appsLabel(1)`.
+  - The caption reads **`Tied with {aboveName} (#{aboveRank}) · 1 more to pass`**. With no name: **`Tied with #{aboveRank} · 1 more to pass`**.
+  - The progress bar stays as is; it is at 100% on a tie.
+- **A2-D3, not tied.** When `gap > 0`, nothing changes.
+- **A2-D4, scope.** The FR Leaderboard card only. `competeModel.js` and the Nexus surfaces are out of scope.
+- **A2-D5, tests.** One unit test per board for the tied case (value and caption, with and without a name), and one test that the untied case is unchanged. Update the harness scene, if one renders the tied Apps example.
+
+### Slice (A2)
+
+One client PR (human-merge). No functions, rules or index change; no deploy. Close FOLLOW_UPS § FR Leaderboard to-pass on a tie in the same PR (Rule 7).
