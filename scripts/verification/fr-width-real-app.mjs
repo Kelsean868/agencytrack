@@ -306,8 +306,7 @@ try {
             await page.evaluate((dark) => document.documentElement.classList.toggle('dark', dark), theme === 'dark');
             await settle(page, 150);
             const found = await page.evaluate(`(${PROBE.toString()})(${JSON.stringify(root)})`);
-            const where = board ? `${route.label} [${board.label}]` : route.label;
-            for (const f of found) findings.push({ route: where, width: w, theme, ...f });
+            for (const f of found) findings.push({ route: route.label, board: board ? board.label : null, width: w, theme, ...f });
             n += found.length;
             mkdirSync(join(OUT, slug), { recursive: true });
             await page.screenshot({ path: join(OUT, slug, `${board ? `${board.id}-` : ''}${w}-${theme}.png`) });
@@ -340,7 +339,10 @@ try {
 }
 
 // Route × width table (light/dark merged), then details.
-const key = (f) => `${f.route}|${f.width}|${f.probe}|${f.selector}|${f.text}`;
+const key = (f) => `${f.route}|${f.board}|${f.width}|${f.probe}|${f.selector}|${f.text}`;
+// The route keeps its plain name (the per-route table matches on it); the board
+// is shown only where a finding is listed.
+const where = (f) => (f.board ? `${f.route} [${f.board}]` : f.route);
 const merged = new Map();
 for (const f of findings) {
   const m = merged.get(key(f));
@@ -354,7 +356,7 @@ const md = [
   '',
   `Staging build served at a local port · signed in as the staging fixture agent · FR look · widths ${WIDTHS.join(', ')} · light + dark · read-only (${blocked.length} write/function requests aborted).`,
   '',
-  `**${rows.length} findings** on ${new Set(rows.map((r) => r.route.replace(/ \[[^\]]*\]$/, ''))).size}/${visited.length} routes${failed.length ? ` · **${failed.length} route(s) NOT CHECKED**` : ''}. Screenshots are not committed.`,
+  `**${rows.length} findings** on ${new Set(rows.map((r) => r.route)).size}/${visited.length} routes${failed.length ? ` · **${failed.length} route(s) NOT CHECKED**` : ''}. Screenshots are not committed.`,
   '',
   `| Route | ${WIDTHS.join(' | ')} |`,
   `|---|${WIDTHS.map(() => '---').join('|')}|`,
@@ -363,7 +365,7 @@ const md = [
   ...(visited.some((v) => v.note) ? ['Notes:', '', ...visited.filter((v) => v.note).map((v) => `- ${v.route}: ${cell(v.note)}`), ''] : []),
   ...(dismissed.length ? ['Modal dialogs closed with Escape before probing:', '', ...dismissed.map((d) => `- ${cell(d.where)}: ${d.dialogs.map((x) => `\`${cell(x)}\``).join(', ')}`), ''] : []),
   ...(rows.length ? ['| Route | Width | Theme | Probe | Element | Text | Detail |', '|---|---|---|---|---|---|---|',
-    ...rows.map((r) => `| ${r.route} | ${r.width} | ${[...r.themes].sort().join('+')} | ${r.probe} | \`${cell(r.selector).slice(0, 100)}\` | ${cell(r.text)} | ${cell(r.detail)} |`)] : []),
+    ...rows.map((r) => `| ${where(r)} | ${r.width} | ${[...r.themes].sort().join('+')} | ${r.probe} | \`${cell(r.selector).slice(0, 100)}\` | ${cell(r.text)} | ${cell(r.detail)} |`)] : []),
 ].join('\n');
 writeFileSync(join(OUT, 'real-app.md'), md);
 if (REPORT) writeFileSync(REPORT, md);
