@@ -18,7 +18,8 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| `functions/` npm audit: a NEW high advisory on `node-forge` (GHSA-86w9-cpqp-85rv, range `*`, pulled in via `firebase-admin`) fails the "Audit dependencies (functions/, high/critical)" step, so EVERY PR's `functions-tests` check is red regardless of change; blocks L-3 (#1048). npm's only fix is `firebase-admin@14.5.0` (major bump) (banked 2026-10-02, FR Leaderboard L-2 post-merge fill) | HIGH | CI / functions dependencies | — | see § functions/ npm audit: node-forge high advisory blocks functions-tests CI |
+| `functions/` npm audit: a NEW high advisory on `node-forge` (GHSA-86w9-cpqp-85rv, range `*`, pulled in via `firebase-admin`) fails the "Audit dependencies (functions/, high/critical)" step, so EVERY PR's `functions-tests` check is red regardless of change; blocks L-3 (#1048). npm's only fix is `firebase-admin@14.5.0` (major bump) (banked 2026-10-02, FR Leaderboard L-2 post-merge fill). **Fix: PR `chore/functions-firebase-admin-13` pins `firebase-admin` to `^13.10.0` (Kyron ruling 2026-10-02, no node-forge in 13.10); stays open until merged AND all functions redeployed** | HIGH | CI / functions dependencies | — | see § functions/ npm audit: node-forge high advisory blocks functions-tests CI |
+| `firebase-admin` 14 migration (namespace API removed): 14.0 drops `admin.firestore()` / `admin.auth()` / `admin.credential` / `admin.apps`, so moving off 13.x means rewriting ~145 files to modular imports; today's gates would FALSELY PASS that upgrade (lazy load + jest mocks). Also needs CI Node 20 → 22, a jest fix for ESM `jose`, and the `firebase-functions-test` peer cap. 13.x deprecates Node 20 (banked 2026-10-02, firebase-admin 13.10 pin) | MEDIUM | Functions dependencies | — | see § firebase-admin 14 migration (namespace API removed) |
 | L-2 real-app staging sweep waived under Rule 13 (Kyron offline): the board pass (Activity / API / Apps) on the FR Leaderboard route has not been walked in the real app on a staging build (banked 2026-10-02, FR Leaderboard L-2 post-merge fill) | MEDIUM | FR redesign / verification | — | see § L-2 deferred real-app staging sweep (Rule 13 waiver) |
 | Sunday cron weekly drafts go stale: written once at Sun 23:00 TT and never re-aggregated when a day is edited later (staging week 2026-08-23: days 52 pts, draft 39 pts); unit and branch managers get no draft at all (banked 2026-10-01, FR Leaderboard L-1 Phase 1) | MEDIUM | Daily → weekly aggregator | — | see § Sunday cron weekly drafts go stale |
 | Production Leaderboard (Nexus) lists the agent above you twice when you sit at rank 9 (desktop): ranks 4–8 are shown, then the around-me cluster starts with rank 8 again. The FR Leaderboard was fixed in L-2 (banked 2026-10-01, FR Leaderboard L-2) | LOW | Leaderboard (Nexus) | — | see § Nexus leaderboard repeats rank 8 for a viewer at rank 9 |
@@ -8403,6 +8404,51 @@ Ledger API and Apps are not affected: they are dated per policy by `dateIssued`.
 - (b) A reviewed, time-boxed audit exception for this GHSA in `.github/workflows/ci.yml` (the comment above the step already names `continue-on-error: true` as the functions-only escape, to be said in the PR that adds it).
 
 **Falsification (Rule 23):** overturned if `npm audit --omit=dev` in `functions/` passes on a clean install of `main` (the advisory is withdrawn or a patched `node-forge` is published).
+
+**Status 2026-10-02:** Kyron ruled a third option, not (a) or (b): pin `firebase-admin` to `^13.10.0`. 13.10 has no `node-forge` dependency, and the functions audit exits 0 (9 moderate). Option (a) was dropped because 14.x removes the namespace API — see § firebase-admin 14 migration (namespace API removed). Fix PR: `chore/functions-firebase-admin-13`. Close this item when that PR is merged AND all functions are redeployed.
+
+## firebase-admin 14 migration (namespace API removed)
+
+**Banked 2026-10-02 in the firebase-admin 13.10 pin PR (`chore/functions-firebase-admin-13`). Severity: MEDIUM. No deadline yet, but 13.x deprecates Node 20, and 14.x is where fixes will land.**
+
+**Why this is open:** the node-forge high advisory was cleared by pinning `firebase-admin` to `^13.10.0`, not by going to 14.5 (Kyron ruling 2026-10-02). A trial upgrade to 14.5.0 showed the move is a migration, not a version bump.
+
+**Main finding:** 14.0.0 "Removed legacy namespace support. To import Admin SDK APIs you should use the ES module entry points." Checked on the 14.5.0 package: `require('firebase-admin')` exports only `initializeApp, getApp, getApps, deleteApp, applicationDefault, cert, refreshToken, FirebaseError, FirebaseAppError, AppErrorCode, SDK_VERSION`. `admin.firestore`, `admin.auth`, `admin.credential` and `admin.apps` are all `undefined`.
+
+**Scope (counted 2026-10-02 on `2d0a0e3`):**
+
+- 26 production files in `functions/` (110 namespace call sites: `admin.firestore()`, `admin.firestore.FieldValue`, `admin.auth()`, and others).
+- 24 test files whose `jest.mock('firebase-admin', ...)` factories build the namespace shape. Each one needs a rewrite.
+- 17 files in `functions/scripts/`, plus `functions/set-agent-password.cjs`.
+- 78 repo scripts that `require('../../functions/node_modules/firebase-admin')`, including the emulator seeder used by the CI a11y job.
+
+**Gates that would FALSELY PASS a 14.x bump (the dangerous part):**
+
+1. `node -e "require('./index.js')"` prints LOAD-OK, because the namespace calls run lazily inside the handlers.
+2. The jest suites mock `firebase-admin`, so they keep passing. Production would throw `admin.firestore is not a function` on the first call.
+The migration PR needs a check that does not mock `firebase-admin`, for example an emulator call of one function per module.
+
+**Other blockers for 14.x:**
+
+- **Node version:** 14.x needs `node >=22`. CI `functions-tests` and the a11y job run Node 20 (`.github/workflows/ci.yml`). The functions runtime is already 22.
+- **jest + ESM:** 14.x pulls `jwks-rsa@4`, which loads ESM-only `jose`. Jest 29 (CJS) fails to parse it. In the trial, `__tests__/sundayHelpers.test.js` and `__tests__/sundayDailyToWeeklyTransaction.test.js` failed with "Cannot use import statement outside a module". This needs a transform or mapper change.
+- **Peer cap:** `firebase-functions-test@3.5.0` (the latest) accepts firebase-admin up to `^13`. No test imports it, so removing it is an option.
+- **Node 20 is deprecated in 13.x** (13.9.0), so the pin buys time but does not avoid the migration.
+
+**Breaking-change map, 13.x → 14.5** (source: https://firebase.google.com/support/release-notes/admin/node, read 2026-10-02):
+
+| Version | Change | Our use |
+|---|---|---|
+| 14.0 | Namespace API removed | All files above. This is the blocker. |
+| 14.0 | Node 18/20 dropped | CI jobs on Node 20 |
+| 14.0 | Instance ID API removed | Not used |
+| 14.0 | Error handling revamped | `err.code === 'auth/user-not-found'` (`functions/index.js`, `functions/kiosk/revokeToken.js`): 14.5 `lib/auth/error.js` still builds `auth/${code}`. Not affected. |
+| 14.0 | `url.parse` replaced; FCM legacy types removed; `RESOURCE_EXHAUSTED` remap; Auth `CreateRequest`/`UpdateRequest` split | Not used |
+| 14.1 / 14.2 / 14.4 | Deprecations: FCM `token`, taskQueue `extensionId`, ML module | Not used |
+
+**Suggested shape:** its own brief (Tier-C, human-merge, functions deploy). Move to the modular imports (`firebase-admin/app`, `/firestore`, `/auth`) module by module behind the existing tests. Rewrite the mocks to the modular shape. Bump the CI Node version. Add one non-mocked load check.
+
+**Falsification (Rule 23):** overturned if a later 14.x release restores the namespace entry point (check `Object.keys(require('firebase-admin'))` for `firestore`), or if the codebase is already on modular imports (`git grep -c "admin\.firestore()" -- functions` returns 0).
 
 ## Kiosk panels still on weekly submissions
 
