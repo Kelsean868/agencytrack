@@ -266,7 +266,9 @@ describe('agent PersistencyTab', () => {
 
       await waitFor(() => expect(screen.queryByTestId('agent-persistency-error')).toBeNull());
       expect(hoisted.getAgentHistory).toHaveBeenCalledTimes(2);
-      expect(screen.getByTestId('agent-persistency-summary')).toBeInTheDocument();
+      // The error card clears when the retry STARTS (load() resets the error);
+      // the summary only renders when the retry FINISHES. Wait for it.
+      expect(await screen.findByTestId('agent-persistency-summary')).toBeInTheDocument();
     });
   });
 });
