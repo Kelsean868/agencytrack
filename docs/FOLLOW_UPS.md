@@ -26,6 +26,7 @@
 | FR Leaderboard "to pass" reads "0 apps" / "0 pts" when you are tied with the agent above (the tie is broken by API, then name); wording for a tie needs a ruling (banked 2026-10-01, FR Leaderboard L-2) | LOW | FR redesign / Leaderboard | — | see § FR Leaderboard to-pass on a tie |
 | Leaderboard month/quarter Activity reads 0 in the first days of a period: a week is placed by its `weekStarting` and never split, so the week that crosses into the new month counts for the old one (seen on staging 1 Oct 2026). Rule kept by Kyron 1 Oct 2026 (banked 2026-10-01, FR Leaderboard L-1) | LOW | Leaderboard / FR | — | see § Leaderboard month-start Activity reads 0 |
 | Leaderboard aggregate takes the load year from the server (UTC) clock, not TT: from TT Dec 31 20:00 to 23:59 it loads the NEXT year's reports and days, so YTD points (and, before L-1, YTD API) collapse for 4 hours (banked 2026-10-01, CodeRabbit on #1045) | LOW | Leaderboard / functions | — | see § Leaderboard aggregate load year uses the UTC clock |
+| Client `computeTotalNewNames` (`src/utils/extractFields.js:157`) omits `namesFromSeminarsAttended` and `namesFromTradeshowsConducted`, which the wizard total and the server `extractActivityFields` count; surfaces still on client `extractFields` under-count event names (banked 2026-10-02, FR Leaderboard L-1b) | LOW | Names / extractFields | — | see § Client computeTotalNewNames omits two event-name channels |
 | `rankForLeaderboard` in `functions/leaderboard/rankingLogic.js` has no runtime caller after FR Leaderboard L-1 (kept only by its cross-check test) (banked 2026-10-01) | LOW | Leaderboard / functions | — | see § rankForLeaderboard has no runtime caller after L-1 |
 | Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
 | FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
@@ -8448,3 +8449,15 @@ The migration PR needs a check that does not mock `firebase-admin`, for example 
 **Suggested shape:** its own brief (Tier-C, human-merge, functions deploy). Move to the modular imports (`firebase-admin/app`, `/firestore`, `/auth`) module by module behind the existing tests. Rewrite the mocks to the modular shape. Bump the CI Node version. Add one non-mocked load check.
 
 **Falsification (Rule 23):** overturned if a later 14.x release restores the namespace entry point (check `Object.keys(require('firebase-admin'))` for `firestore`), or if the codebase is already on modular imports (`git grep -c "admin\.firestore()" -- functions` returns 0).
+
+## Client computeTotalNewNames omits two event-name channels
+
+**Banked 2026-10-02 in FR Leaderboard L-1b (Amendment A1). Severity: LOW.**
+
+**Observed:** `computeTotalNewNames` (`src/utils/extractFields.js:157`) sums five fields: `namesFromColdCanvass`, `referralsObtained`, `namesFromSeminarsConducted`, `namesFromTradeshowsAttended`, `namesFromOther`. It leaves out `namesFromSeminarsAttended` and `namesFromTradeshowsConducted`. The wizard total (`StepNewNamesAdded.jsx:18-22`) counts all four event channels, and so does the server `extractActivityFields` (`functions/utils/fieldHelpers.js:40`). So the surfaces still on client `extractFields` under-count event names. Callers found on 2026-10-02: `extractFields.js:124` (`f.totalNewNames`), `src/utils/funnelModel.js:132`, `src/lib/schema/wizardLive.computations.js:129`.
+
+**Why it matters now:** the FR Leaderboard activity counts (A1-D2) take `names` from the server function, so the kiosk Weekly Activity slide shows the full total. A client surface that reads the same report through `extractFields` can show a lower number for the same week.
+
+**Fix shape:** add the two fields to `computeTotalNewNames`, then re-check the tests that pin the 5-field sum (`git grep -n "computeTotalNewNames" -- src`). The doc-comment above the function says "5-field sum" and must change too. Do it as its own small PR; it moves numbers on the client surfaces, so Kyron should rule on it first.
+
+**Falsification (Rule 23):** overturned if `computeTotalNewNames` already includes both fields (read `src/utils/extractFields.js:157-166`), or if a ruling says the client total is meant to leave out attended seminars and conducted tradeshows.
