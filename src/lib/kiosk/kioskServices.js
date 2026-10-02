@@ -41,6 +41,19 @@ export async function getKioskDisabledPanels(tenantId, branchId) {
   return Array.isArray(data.disabledPanels) ? data.disabledPanels : [];
 }
 
+// FR Leaderboard L-3: the branch's leaderboard aggregate
+// (`leaderboards/{branchId}`, written by the leaderboard-aggregate CF). Kiosk
+// rules already allow `get` on the kiosk's own branch doc (kioskCanRead +
+// doc-id == token.branchId), so there is no rules change. Returns the doc data,
+// or null when the doc does not exist yet / context is missing — the panels
+// then show their empty state, never fake data. A denied or failed read throws;
+// the KioskShell caller keeps the last good copy.
+export async function getKioskLeaderboardAggregate(tenantId, branchId) {
+  if (!tenantId || !branchId) return null;
+  const snap = await getDoc(doc(kioskDb, `tenants/${tenantId}/leaderboards/${branchId}`));
+  return snap.exists() ? snap.data() : null;
+}
+
 export async function getKioskTenantUsers(tenantId) {
   const snap = await getDocs(collection(kioskDb, `tenants/${tenantId}/users`));
   return snap.docs

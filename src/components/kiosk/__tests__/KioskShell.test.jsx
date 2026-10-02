@@ -8,6 +8,7 @@ import {
   getKioskAgentOfMonth,
   getKioskCampaigns,
   getKioskDisabledPanels,
+  getKioskLeaderboardAggregate,
 } from '../../../lib/kiosk/kioskServices';
 import { deriveKioskCelebrations } from '../../../lib/kiosk/kioskCelebrations';
 import { POLL_INTERVAL_MS } from '../../../lib/kiosk/kioskConfig';
@@ -36,6 +37,7 @@ vi.mock('../../../lib/kiosk/kioskServices', () => ({
   getKioskAgentOfMonth: vi.fn(),
   getKioskCampaigns: vi.fn(),
   getKioskDisabledPanels: vi.fn(),
+  getKioskLeaderboardAggregate: vi.fn(),
 }));
 
 vi.mock('../../../lib/kiosk/kioskCelebrations', () => ({
@@ -47,9 +49,14 @@ const SUBS = [
   { id: 's1', agentId: 'a1', weekStarting: `${THIS_YEAR}-01-07`, status: 'submitted', newBusiness: { api: 90000, apps: 5 }, version: 2 },
 ];
 const USERS = [{ id: 'a1', role: 'agent', name: 'Alice' }];
+// FR Leaderboard L-3: the aggregate doc the five leaderboard panels read.
+const AGG_ENTRY = { agentId: 'a1', name: 'Alice', unitId: 'u1', unitName: 'Unit One', periodApi: 90000, apps: 5, points: 120, rank: 1, rankWithinUnit: 1 };
+const AGG = { week: [AGG_ENTRY], mtd: [AGG_ENTRY], qtd: [AGG_ENTRY], ytd: [AGG_ENTRY] };
+const BOARD_PANELS = ['ytdLeaderboards', 'qtdLeaderboards', 'mtdLeaderboards', 'weekLeaderboards', 'weeklyActivity'];
 const AOM = { api: { agentUid: 'a1', agentName: 'Alice', achievementValue: 90000 } };
 
-function setData({ subs = [], users = [], aom = null, campaigns = [], celebrations = [], disabledPanels = [] } = {}) {
+function setData({ subs = [], users = [], aom = null, campaigns = [], celebrations = [], disabledPanels = [], aggregate = null } = {}) {
+  getKioskLeaderboardAggregate.mockResolvedValue(aggregate);
   getKioskYTDSubmissions.mockResolvedValue(subs);
   getKioskTenantUsers.mockResolvedValue(users);
   getKioskAgentOfMonth.mockResolvedValue(aom);
@@ -82,7 +89,7 @@ describe('KioskShell — dynamic rotation (3.6)', () => {
   afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
   it('renders the theatrical stage + overlay chrome', async () => {
-    setData({ subs: SUBS, users: USERS, aom: AOM });
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: AGG });
     await mountShell();
     expect(document.querySelector('[data-kiosk="true"].kiosk-stage')).not.toBeNull();
     expect(document.querySelector('.kiosk-backdrop')).not.toBeNull();
@@ -92,7 +99,7 @@ describe('KioskShell — dynamic rotation (3.6)', () => {
   });
 
   it('with full data (no campaigns/celebrations) rotates through the 13 base panels', async () => {
-    setData({ subs: SUBS, users: USERS, aom: AOM });
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: AGG });
     await mountShell();
     const seen = new Set(await collectRotation(16));
     expect(seen).toContain('welcome');
@@ -116,6 +123,7 @@ describe('KioskShell — dynamic rotation (3.6)', () => {
       subs: SUBS,
       users: USERS,
       aom: AOM,
+      aggregate: AGG,
       campaigns: [{ id: 'c1', name: 'Xmas', status: 'active', kiosk: true, scope: { type: 'branch' } }],
     });
     await mountShell();
@@ -128,6 +136,7 @@ describe('KioskShell — dynamic rotation (3.6)', () => {
       subs: SUBS,
       users: USERS,
       aom: AOM,
+      aggregate: AGG,
       celebrations: [{ id: 'a1', name: 'Alice', years: 5, dateLabel: '01-08', initials: 'A' }],
     });
     await mountShell();
@@ -141,6 +150,7 @@ describe('KioskShell — dynamic rotation (3.6)', () => {
       subs: SUBS,
       users: USERS,
       aom: AOM,
+      aggregate: AGG,
       disabledPanels: ['agentOfMonth', 'compliance'],
     });
     await mountShell();
@@ -153,7 +163,7 @@ describe('KioskShell — dynamic rotation (3.6)', () => {
   });
 
   it('degrades to all-enabled when the disabledPanels read fails (fail-open)', async () => {
-    setData({ subs: SUBS, users: USERS, aom: AOM });
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: AGG });
     getKioskDisabledPanels.mockRejectedValueOnce(new Error('permission-denied'));
     await mountShell();
     const seen = new Set(await collectRotation(16));
@@ -161,6 +171,75 @@ describe('KioskShell — dynamic rotation (3.6)', () => {
     expect(seen).toContain('agentOfMonth');
     expect(seen).toContain('compliance');
     expect(seen).toContain('welcome');
+  });
+});
+
+describe('KioskShell — leaderboard aggregate (FR Leaderboard L-3)', () => {
+  beforeEach(() => { vi.useFakeTimers(); vi.clearAllMocks(); });
+  afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
+
+  it('reads the branch aggregate once per poll', async () => {
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: AGG });
+    await mountShell();
+    expect(getKioskLeaderboardAggregate).toHaveBeenCalledTimes(1);
+    expect(getKioskLeaderboardAggregate).toHaveBeenCalledWith('t1', 'b1');
+    await act(async () => { await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS); });
+    expect(getKioskLeaderboardAggregate).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the five leaderboard panels when the aggregate has rows but there are zero submissions', async () => {
+    setData({ subs: [], users: [], aom: null, aggregate: AGG });
+    await mountShell();
+    const seen = new Set(await collectRotation(8));
+    for (const key of BOARD_PANELS) expect(seen).toContain(key);
+    // Submission-fed panels are still dropped with zero submissions.
+    expect(seen).not.toContain('branchOverview');
+    expect(seen).not.toContain('awardsWatch');
+  });
+
+  it('drops the five leaderboard panels when the aggregate doc is missing, even with submissions', async () => {
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: null });
+    await mountShell();
+    const seen = new Set(await collectRotation(16));
+    for (const key of BOARD_PANELS) expect(seen).not.toContain(key);
+    // Submission-fed panels keep rotating.
+    expect(seen).toContain('branchOverview');
+  });
+
+  it('drops the five leaderboard panels when the aggregate has no rows with a value', async () => {
+    const zero = { ...AGG_ENTRY, periodApi: 0, apps: 0, points: 0 };
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: { week: [zero], mtd: [zero], qtd: [zero], ytd: [zero] } });
+    await mountShell();
+    const seen = new Set(await collectRotation(16));
+    for (const key of BOARD_PANELS) expect(seen).not.toContain(key);
+  });
+
+  it('drops only the Activity panel when nobody has points but production exists', async () => {
+    const noPoints = { ...AGG_ENTRY, points: 0 };
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: { week: [noPoints], mtd: [noPoints], qtd: [noPoints], ytd: [noPoints] } });
+    await mountShell();
+    const seen = new Set(await collectRotation(16));
+    expect(seen).toContain('weekLeaderboards');
+    expect(seen).not.toContain('weeklyActivity');
+  });
+
+  it('a failed aggregate read after a good one keeps the last good board', async () => {
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: AGG });
+    await mountShell();
+    getKioskLeaderboardAggregate.mockRejectedValueOnce(new Error('permission-denied'));
+    await act(async () => { await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS); });
+    const seen = new Set(await collectRotation(16));
+    for (const key of BOARD_PANELS) expect(seen).toContain(key);
+  });
+
+  it('a failed aggregate read does not blank the other panels or show the reconnecting card', async () => {
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: AGG });
+    getKioskLeaderboardAggregate.mockRejectedValue(new Error('permission-denied'));
+    await mountShell();
+    expect(screen.queryByTestId('kiosk-reconnecting')).toBeNull();
+    const seen = new Set(await collectRotation(16));
+    expect(seen).toContain('branchOverview');
+    for (const key of BOARD_PANELS) expect(seen).not.toContain(key);
   });
 });
 
@@ -174,6 +253,7 @@ describe('KioskShell — initial-load reconnecting indicator (A3)', () => {
     getKioskAgentOfMonth.mockResolvedValue(null);
     getKioskCampaigns.mockResolvedValue([]);
     getKioskDisabledPanels.mockResolvedValue([]);
+    getKioskLeaderboardAggregate.mockResolvedValue(null);
     deriveKioskCelebrations.mockReturnValue([]);
 
     await mountShell();
@@ -191,6 +271,7 @@ describe('KioskShell — initial-load reconnecting indicator (A3)', () => {
     getKioskAgentOfMonth.mockResolvedValue(null);
     getKioskCampaigns.mockResolvedValue([]);
     getKioskDisabledPanels.mockResolvedValue([]);
+    getKioskLeaderboardAggregate.mockResolvedValue(null);
     deriveKioskCelebrations.mockReturnValue([]);
 
     await mountShell();
@@ -198,7 +279,7 @@ describe('KioskShell — initial-load reconnecting indicator (A3)', () => {
 
     // Same 5-minute poll cadence retries the initial-load failure — next
     // poll succeeds with real data.
-    setData({ subs: SUBS, users: USERS, aom: AOM });
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: AGG });
     await act(async () => {
       await vi.advanceTimersByTimeAsync(POLL_INTERVAL_MS);
     });
@@ -209,7 +290,7 @@ describe('KioskShell — initial-load reconnecting indicator (A3)', () => {
   });
 
   it('a refresh failure after success stays silent — no indicator, last-good content persists', async () => {
-    setData({ subs: SUBS, users: USERS, aom: AOM });
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: AGG });
     await mountShell();
     expect(screen.queryByTestId('kiosk-reconnecting')).toBeNull();
     expect(document.querySelector('[data-panel]')).not.toBeNull();

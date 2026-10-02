@@ -1,11 +1,6 @@
 import React, { useMemo } from 'react';
-import {
-  filterSubmissionsByPeriod,
-  computeAgentTotals,
-  rankAgentsByApi,
-} from '../../../lib/productionReport/computations';
 import { ttdK } from '../../../lib/kiosk/kioskFormat';
-import { buildSubmissionNameMap } from '../../../lib/kiosk/utils';
+import { kioskBoardRows } from '../../../lib/kiosk/kioskBoards';
 import { useCountUp } from '../../../hooks/useCountUp';
 import Avatar from '../Avatar';
 import KioskMedal from '../KioskMedal';
@@ -17,11 +12,18 @@ import KioskMedal from '../KioskMedal';
  * (elevated champion center, medal coins, breathing halos, Champion/Runner-up/
  * Third labels), a WK/MTD/QTD/YTD chip selector marking the active view, and a
  * compact ranks-4–8 tail with API bars. One template renders all four period
- * panels. Ranked by settled API (primary production metric).
+ * panels.
+ *
+ * Data (FR Leaderboard L-3, brief D13): the branch's leaderboard aggregate
+ * (`leaderboards/{branchId}`), not submissions. Ranked by SETTLED API from the
+ * policy ledger (`periodApi`), through the shared ranker (ties: API, apps,
+ * points, then name); the apps line is the ledger's `apps`. A missing aggregate
+ * shows the empty state — never fake data.
  *
  * Props:
- *   period      — 'week' | 'mtd' | 'quarter' | 'ytd' (productionReport keys)
- *   allSubmissions, allUsers
+ *   period             — 'week' | 'mtd' | 'quarter' | 'ytd' (productionReport keys)
+ *   leaderboardAggregate — the aggregate doc data, or null when it does not exist
+ *   allUsers           — optional roster, used only for avatar photos
  */
 
 const CHIPS = [
@@ -91,17 +93,17 @@ function PodiumCard({ agent, center }) {
       )}
 
       <p className={`mt-3 font-display font-bold tracking-tight leading-none ${meta.api} ${center ? 'text-4xl' : 'text-3xl'}`}>
-        <AnimatedApi value={agent.totals.totalApi} />
+        <AnimatedApi value={agent.api} />
       </p>
       <p className="mt-1 text-[0.66rem] font-mono uppercase tracking-[0.1em] text-presentation-muted">
-        {agent.totals.totalApps} apps
+        {agent.apps} apps
       </p>
     </div>
   );
 }
 
 function TailRow({ agent, maxApi }) {
-  const pct = maxApi > 0 ? Math.min(100, Math.round((agent.totals.totalApi / maxApi) * 100)) : 0;
+  const pct = maxApi > 0 ? Math.min(100, Math.round((agent.api / maxApi) * 100)) : 0;
   return (
     <div className="kiosk-glass rounded-xl flex items-center gap-4 px-4 py-2" data-testid={`tail-row-rank-${agent.rank}`}>
       <span className="w-8 text-right font-display font-bold text-presentation-muted text-lg">#{agent.rank}</span>
@@ -110,38 +112,31 @@ function TailRow({ agent, maxApi }) {
       <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--kiosk-surface-raised)' }}>
         <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--kiosk-teal)' }} />
       </div>
-      <span className="w-28 text-right font-display font-bold text-presentation-text text-lg">{ttdK(agent.totals.totalApi)}</span>
+      <span className="w-28 text-right font-display font-bold text-presentation-text text-lg">{ttdK(agent.api)}</span>
     </div>
   );
 }
 
-export default function RankedLeaderboardPanel({ period = 'ytd', allSubmissions = [], allUsers = [] }) {
-  const ranked = useMemo(() => {
-    const filtered = filterSubmissionsByPeriod(allSubmissions, period);
-    const nameByAgent = buildSubmissionNameMap(filtered);
-    const byAgent = {};
-    for (const sub of filtered) {
-      const aid = sub.agentId ?? sub.userId ?? '';
-      if (!aid) continue;
-      (byAgent[aid] ??= []).push(sub);
-    }
-    const arr = Object.entries(byAgent).map(([agentId, subs]) => {
-      const user = allUsers.find((u) => u.id === agentId) ?? {};
+export default function RankedLeaderboardPanel({ period = 'ytd', leaderboardAggregate = null, allUsers = [] }) {
+  const ranked = useMemo(
+    () => kioskBoardRows(leaderboardAggregate, period, 'api').map((e) => {
+      const user = allUsers.find((u) => u.id === e.agentId) ?? {};
       return {
-        agentId,
-        agentName: user.name || user.displayName || nameByAgent.get(agentId) || 'Agent',
+        agentId: e.agentId,
+        agentName: e.name || user.name || user.displayName || 'Agent',
         photoURL: user.photoURL ?? null,
-        unitId: user.unitId ?? '',
-        unitLabel: user.unitId ? `Unit ${String(user.unitId).slice(-4)}` : '',
-        totals: computeAgentTotals(subs),
+        unitLabel: e.unitName || '',
+        rank: e.rank,
+        api: Number(e.periodApi) || 0,
+        apps: Number(e.apps) || 0,
       };
-    });
-    return rankAgentsByApi(arr);
-  }, [allSubmissions, allUsers, period]);
+    }),
+    [leaderboardAggregate, allUsers, period],
+  );
 
   const podium = ranked.slice(0, 3);
   const tail = ranked.slice(3, 8);
-  const maxApi = ranked[0]?.totals.totalApi ?? 0;
+  const maxApi = ranked[0]?.api ?? 0;
   // Visual order: runner-up · champion · third — champion elevated center.
   const podiumOrder = [podium[1], podium[0], podium[2]];
 

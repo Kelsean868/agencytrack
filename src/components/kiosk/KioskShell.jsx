@@ -7,12 +7,14 @@ import {
 } from '../../lib/kiosk/kioskConfig';
 import { buildKioskRotation } from '../../lib/kiosk/kioskRotation';
 import { deriveKioskCelebrations } from '../../lib/kiosk/kioskCelebrations';
+import { KIOSK_BOARD_PANELS, kioskPanelHasBoardRows } from '../../lib/kiosk/kioskBoards';
 import {
   getKioskYTDSubmissions,
   getKioskTenantUsers,
   getKioskAgentOfMonth,
   getKioskCampaigns,
   getKioskDisabledPanels,
+  getKioskLeaderboardAggregate,
 } from '../../lib/kiosk/kioskServices';
 
 import AgentOfMonthPanel        from './panels/AgentOfMonthPanel';
@@ -53,10 +55,12 @@ const PANEL_COMPONENTS = {
 
 // Panels that have nothing honest to show when there are zero submissions —
 // dropped from the rotation so the wall never sits on a blank data slide.
+// The five leaderboard panels (ytd/qtd/mtd/week + weekly activity) are NOT
+// here: they read the leaderboard aggregate (FR Leaderboard L-3) and are
+// dropped by `kioskPanelHasBoardRows` instead.
 const SUBMISSION_DEPENDENT = new Set([
   'branchOverview', 'branchRunningTotals', 'unitLeaderboard', 'lastWeekRecap',
-  'ytdLeaderboards', 'qtdLeaderboards', 'mtdLeaderboards', 'weekLeaderboards',
-  'weeklyActivity', 'awardsWatch', 'compliance',
+  'awardsWatch', 'compliance',
 ]);
 
 export default function KioskShell({ tenantId, branchId }) {
@@ -66,6 +70,8 @@ export default function KioskShell({ tenantId, branchId }) {
   const [agentOfMonthData, setAgentOfMonthData] = useState(null);
   const [campaigns, setCampaigns] = useState([]);
   const [disabledPanels, setDisabledPanels] = useState([]);
+  // FR Leaderboard L-3: `leaderboards/{branchId}` doc data; null = no doc yet.
+  const [leaderboardAggregate, setLeaderboardAggregate] = useState(null);
   const [loading, setLoading] = useState(true);
   // A3: distinguishes "first fetch ever failed, no last-good data exists yet"
   // from "a later poll failed but we already have data to keep showing" — a
@@ -79,7 +85,7 @@ export default function KioskShell({ tenantId, branchId }) {
 
   const fetchData = useCallback(async () => {
     try {
-      const [subs, users, aom, camps, disabled] = await Promise.all([
+      const [subs, users, aom, camps, disabled, board] = await Promise.all([
         getKioskYTDSubmissions(tenantId, branchId),
         // getKioskTenantUsers lists users, which the kiosk rules do not grant
         // (kiosk has `get`, not `list` — the users read-split in SHAKEDOWN-002
@@ -99,12 +105,20 @@ export default function KioskShell({ tenantId, branchId }) {
         // (all panels enabled — current behavior) on any denied/network/absent
         // read so a missing config doc never blanks or breaks the wall.
         getKioskDisabledPanels(tenantId, branchId).catch(() => []),
+        // FR Leaderboard L-3: one getDoc of the branch's leaderboard aggregate
+        // per poll. Wrapped as `{ data }` so a FAILED read (null here) is told
+        // apart from a MISSING doc (`{ data: null }`): a failure keeps the last
+        // good board on screen instead of blanking the leaderboard panels.
+        getKioskLeaderboardAggregate(tenantId, branchId)
+          .then((data) => ({ data }))
+          .catch(() => null),
       ]);
       setAllSubmissions(subs);
       setAllUsers(users);
       setAgentOfMonthData(aom);
       setCampaigns(camps);
       setDisabledPanels(disabled);
+      if (board) setLeaderboardAggregate(board.data);
       hasLoadedOnce.current = true;
       setReconnecting(false);
     } catch {
@@ -137,6 +151,11 @@ export default function KioskShell({ tenantId, branchId }) {
     const hasSubs = allSubmissions.length > 0;
     const droppedKeys = new Set();
     if (!hasSubs) SUBMISSION_DEPENDENT.forEach((k) => droppedKeys.add(k));
+    // Leaderboard panels live on the aggregate, not on submissions: kept while
+    // the aggregate has rows (even with zero submissions), dropped when it has none.
+    Object.keys(KIOSK_BOARD_PANELS).forEach((k) => {
+      if (!kioskPanelHasBoardRows(leaderboardAggregate, k)) droppedKeys.add(k);
+    });
     const hasWinner = agentOfMonthData
       && ['api', 'apps', 'activity'].some((c) => agentOfMonthData[c]);
     if (!hasWinner) droppedKeys.add('agentOfMonth');
@@ -155,7 +174,7 @@ export default function KioskShell({ tenantId, branchId }) {
       droppedKeys,
       disabledKeys: new Set(disabledPanels),
     });
-  }, [allSubmissions, allUsers, agentOfMonthData, campaigns, disabledPanels]);
+  }, [allSubmissions, allUsers, agentOfMonthData, campaigns, disabledPanels, leaderboardAggregate]);
 
   const safeIndex = rotation.length > 0 ? panelIndex % rotation.length : 0;
   const entry = rotation[safeIndex] ?? { key: 'welcome' };
@@ -208,6 +227,7 @@ export default function KioskShell({ tenantId, branchId }) {
     allSubmissions,
     allUsers,
     agentOfMonthData,
+    leaderboardAggregate,
     tenantId,
     branchId,
     ...(entry.key === 'campaignLeaderboards' ? { campaign: activeCampaign } : {}),

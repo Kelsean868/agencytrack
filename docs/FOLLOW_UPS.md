@@ -24,6 +24,7 @@
 | Leaderboard month/quarter Activity reads 0 in the first days of a period: a week is placed by its `weekStarting` and never split, so the week that crosses into the new month counts for the old one (seen on staging 1 Oct 2026). Rule kept by Kyron 1 Oct 2026 (banked 2026-10-01, FR Leaderboard L-1) | LOW | Leaderboard / FR | — | see § Leaderboard month-start Activity reads 0 |
 | Leaderboard aggregate takes the load year from the server (UTC) clock, not TT: from TT Dec 31 20:00 to 23:59 it loads the NEXT year's reports and days, so YTD points (and, before L-1, YTD API) collapse for 4 hours (banked 2026-10-01, CodeRabbit on #1045) | LOW | Leaderboard / functions | — | see § Leaderboard aggregate load year uses the UTC clock |
 | `rankForLeaderboard` in `functions/leaderboard/rankingLogic.js` has no runtime caller after FR Leaderboard L-1 (kept only by its cross-check test) (banked 2026-10-01) | LOW | Leaderboard / functions | — | see § rankForLeaderboard has no runtime caller after L-1 |
+| Kiosk panels still on weekly submissions: branch overview, running totals, awards watch, last-week recap, campaign standings and unit leaderboard read weekly reports, which agents no longer fill; L-3 moved only the ranked and activity panels to the leaderboard aggregate (banked 2026-10-01, FR Leaderboard L-3) | LOW | Kiosk / Leaderboard | — | see § Kiosk panels still on weekly submissions |
 | Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
 | FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
 | Commission playground ladder says "÷ comm · × settle", but API to write divides by the PERSISTENCY rate; settlement feeds nothing shown (Nexus look; the FR port omits the connector text) (banked 2026-09-30, R2-7) | MEDIUM | Commission playground | — | see § Commission playground ladder: the settle label does not match the math |
@@ -8364,3 +8365,22 @@ Ledger API and Apps are not affected: they are dated per policy by `dateIssued`.
 **Options (needs a ruling, copy is design):** (a) keep as is; (b) say "Tied with [name] — [one more] to pass" (one more point / app / TTD 1); (c) hide the gap and show "Tied with [name]".
 
 **Falsification (Rule 23):** closed if the ranker stops breaking ties (equal values share a rank), which would change D7.
+
+## Kiosk panels still on weekly submissions
+
+**Banked 2026-10-01 from FR Leaderboard L-3. Severity: LOW.**
+
+**Observed:** L-3 moved the four ranked panels (`ytdLeaderboards`, `qtdLeaderboards`, `mtdLeaderboards`, `weekLeaderboards`) and `weeklyActivity` onto the leaderboard aggregate (`leaderboards/{branchId}`: ledger settled API and apps, activity points). Every other kiosk panel still reads `allSubmissions` (weekly reports, loaded by `getKioskYTDSubmissions`), and agents no longer fill the weekly report, so their production figures show zero or stale numbers while the ledger holds real business:
+
+- `BranchOverviewPanel` (branch totals)
+- `RunningTotalsPanel` (branch running totals)
+- `AwardsWatchPanel` (award progress)
+- `LastWeekRecapPanel` (last-week recap)
+- `CampaignLeaderboardPanel` (campaign standings, windowed submissions)
+- `UnitLeaderboardPanel` (unit leaderboard)
+
+`CompliancePanel` also reads `allSubmissions`, but it tracks report filing, so submissions are the right source there.
+
+**Fix shape:** needs a ruling per panel on its source: the aggregate already holds per-agent period API, apps and points (unit totals can be summed from `unitId`); award progress and campaign standings need ledger data the kiosk cannot read today (no `policies` arm, brief A4), so they need either more fields on the aggregate (functions change, deploy-gated) or a separate aggregate doc. Any of these is a functions or rules change, so it is its own brief.
+
+**Falsification (Rule 23):** closed per panel if it stops reading `allSubmissions` (`git grep -n allSubmissions src/components/kiosk/panels`). Overturned if agents start filing weekly reports again, which would make the submission figures true.

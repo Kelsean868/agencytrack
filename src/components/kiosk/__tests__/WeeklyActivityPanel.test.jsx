@@ -7,114 +7,97 @@ vi.mock('../Avatar', () => ({
   default: ({ agent }) => <span data-testid="avatar">{agent.name}</span>,
 }));
 
-const AGENTS = [
-  { id: 'a1', name: 'Alice', role: 'agent' },
-  { id: 'a2', name: 'Bob', role: 'agent' },
-];
+// One aggregate entry (leaderboards/{branchId}). `points` is the Activity metric.
+const entry = (agentId, name, points, apps = 0, periodApi = 0) => ({
+  agentId, name, unitId: 'u1', unitName: 'Unit One', periodApi, apps, points,
+  rank: 99, rankWithinUnit: 99, previousRank: null, previousRanks: null,
+});
 
-// Week starting must be the current week's Sunday in Trinidad-local time
-// (UTC−4, no DST) — mirrors filterSubmissionsByPeriod's toTriniDate semantics
-// in src/lib/productionReport/computations.js. Computing in UTC instead causes
-// the fixture's weekStarting to fall outside the filter's Trinidad-local window
-// during the 00:00–03:59 UTC danger window each day.
-const TRINI_OFFSET_MS = 4 * 60 * 60 * 1000;
-function currentWeekSunday() {
-  const d = new Date(Date.now() - TRINI_OFFSET_MS);
-  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
-  const y = d.getUTCFullYear();
-  const m = String(d.getUTCMonth() + 1).padStart(2, '0');
-  const day = String(d.getUTCDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+const AGG = {
+  week: [
+    entry('a1', 'Alice', 120, 2, 5000),
+    entry('a2', 'Bob', 300, 0, 0),
+    entry('a3', 'Carol', 0, 0, 0),
+  ],
+};
 
-const THIS_WEEK = currentWeekSunday();
+// Agent names in rank order, read from the rendered rows.
+const names = () => Array.from(document.querySelectorAll('p.font-semibold')).map((p) => p.textContent);
 
-const SUBS = [
-  {
-    agentId: 'a1',
-    weekStarting: THIS_WEEK,
-    status: 'submitted',
-    // activity fields (flat schema)
-    namesFromColdCanvass: 10,
-    referralsObtained: 5,
-    namesFromSeminarsConducted: 0,
-    namesFromTradeshowsAttended: 0,
-    namesFromOther: 0,
-    referralCalls: 5,
-    followUpCalls: 10,
-    coldCalls: 3,
-    seminarTradeshowCalls: 0,
-    ffiConducted: 4,
-    ciConducted: 2,
-    appointmentsSet: 6,
-  },
-  {
-    agentId: 'a2',
-    weekStarting: THIS_WEEK,
-    status: 'submitted',
-    namesFromColdCanvass: 20,
-    referralsObtained: 0,
-    namesFromSeminarsConducted: 0,
-    namesFromTradeshowsAttended: 0,
-    namesFromOther: 0,
-    referralCalls: 0,
-    followUpCalls: 5,
-    coldCalls: 0,
-    seminarTradeshowCalls: 0,
-    ffiConducted: 1,
-    ciConducted: 0,
-    appointmentsSet: 2,
-  },
-];
-
-describe('WeeklyActivityPanel', () => {
-  it('renders both Prospecting and Conversions headers', () => {
-    render(<WeeklyActivityPanel allSubmissions={SUBS} allUsers={AGENTS} />);
-    expect(screen.getByText('Prospecting')).toBeInTheDocument();
-    expect(screen.getByText('Conversions')).toBeInTheDocument();
+describe('WeeklyActivityPanel (FR Leaderboard L-3)', () => {
+  it('has one Points column — no Prospecting / Conversions columns', () => {
+    render(<WeeklyActivityPanel leaderboardAggregate={AGG} />);
+    expect(screen.getByText('Points')).toBeInTheDocument();
+    expect(screen.queryByText('Prospecting')).toBeNull();
+    expect(screen.queryByText('Conversions')).toBeNull();
+    expect(screen.getByText('Weekly Activity')).toBeInTheDocument();
   });
 
-  it('renders subtitle text for each column', () => {
-    render(<WeeklyActivityPanel allSubmissions={SUBS} allUsers={AGENTS} />);
-    expect(screen.getByText('(Names + Calls)')).toBeInTheDocument();
-    expect(screen.getByText('(FFIs + CIs)')).toBeInTheDocument();
+  it('ranks the week by points, not by API', () => {
+    // Bob has 0 API but the most points; Alice has the API.
+    render(<WeeklyActivityPanel leaderboardAggregate={AGG} />);
+    expect(names()).toEqual(['Bob', 'Alice']);
   });
 
-  it('shows both agent names in prospecting list', () => {
-    render(<WeeklyActivityPanel allSubmissions={SUBS} allUsers={AGENTS} />);
-    // Both columns render names — at least 2 Alice + 2 Bob across both columns
-    expect(screen.getAllByText('Alice').length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText('Bob').length).toBeGreaterThanOrEqual(1);
+  it('shows each agent\'s points total and ledger apps beneath it', () => {
+    render(<WeeklyActivityPanel leaderboardAggregate={AGG} />);
+    expect(screen.getByText('300')).toBeInTheDocument();
+    expect(screen.getByText('120')).toBeInTheDocument();
+    expect(document.body.textContent).toContain('2 apps');
+    expect(document.body.textContent).toContain('0 apps');
   });
 
-  it('renders breakdown text beneath totals', () => {
-    render(<WeeklyActivityPanel allSubmissions={SUBS} allUsers={AGENTS} />);
-    // Breakdown labels should appear
-    expect(document.body.textContent).toContain('names');
-    expect(document.body.textContent).toContain('calls');
+  it('breaks a points tie by API, then apps, then name (shared ranker)', () => {
+    const agg = {
+      week: [
+        entry('t1', 'Zoe', 100, 1, 0),
+        entry('t2', 'Yan', 100, 0, 9000),  // more API -> first
+        entry('t3', 'Xia', 100, 3, 0),     // more apps than Zoe -> before Zoe
+        entry('t4', 'Abe', 100, 1, 0),     // same as Zoe -> name first
+      ],
+    };
+    render(<WeeklyActivityPanel leaderboardAggregate={agg} />);
+    expect(names()).toEqual(['Yan', 'Xia', 'Abe', 'Zoe']);
   });
 
-  it('renders empty state when no submissions this week', () => {
-    render(<WeeklyActivityPanel allSubmissions={[]} allUsers={AGENTS} />);
-    expect(screen.getByText(/no prospecting recorded this week/i)).toBeInTheDocument();
-    expect(screen.getByText(/no conversions recorded this week/i)).toBeInTheDocument();
+  it('reads the week array only', () => {
+    const agg = { week: [entry('a1', 'WeekAgent', 10)], mtd: [entry('a2', 'MonthAgent', 999)] };
+    render(<WeeklyActivityPanel leaderboardAggregate={agg} />);
+    expect(names()).toEqual(['WeekAgent']);
   });
 
-  it('excludes appointmentsSet from both totals', () => {
-    // Appointments are set but should not appear in either column's total breakdown
-    render(<WeeklyActivityPanel allSubmissions={SUBS} allUsers={AGENTS} />);
-    expect(document.body.textContent).not.toMatch(/appointments/i);
+  it('shows the empty state when the aggregate doc is missing (null)', () => {
+    render(<WeeklyActivityPanel leaderboardAggregate={null} />);
+    expect(screen.getByText(/no activity recorded this week/i)).toBeInTheDocument();
+    expect(screen.getByText('Points')).toBeInTheDocument();
+  });
+
+  it('shows the empty state when nobody has points yet', () => {
+    render(<WeeklyActivityPanel leaderboardAggregate={{ week: [entry('a1', 'Alice', 0, 3, 8000)] }} />);
+    expect(screen.getByText(/no activity recorded this week/i)).toBeInTheDocument();
+  });
+
+  it('takes names from the aggregate when the roster is empty', () => {
+    render(<WeeklyActivityPanel leaderboardAggregate={AGG} allUsers={[]} />);
+    expect(names()).toContain('Alice');
+    expect(names()).not.toContain('Agent');
+  });
+
+  it('shows at most 8 rows', () => {
+    const week = Array.from({ length: 12 }, (_, i) => entry(`a${i}`, `Agent${String(i).padStart(2, '0')}`, 100 - i));
+    render(<WeeklyActivityPanel leaderboardAggregate={{ week }} />);
+    expect(names()).toHaveLength(8);
+    expect(names()[0]).toBe('Agent00');
   });
 
   it('does not render emoji characters', () => {
-    render(<WeeklyActivityPanel allSubmissions={SUBS} allUsers={AGENTS} />);
+    render(<WeeklyActivityPanel leaderboardAggregate={AGG} />);
     const emojiPattern = /[\u{1F947}\u{1F948}\u{1F949}\u{1F3C6}⭐\u{1F525}]/u;
     expect(emojiPattern.test(document.body.textContent)).toBe(false);
   });
 
   it('uses Trophy and Medal icons for top positions, not emoji', () => {
-    render(<WeeklyActivityPanel allSubmissions={SUBS} allUsers={AGENTS} />);
-    const svgs = document.querySelectorAll('svg');
-    expect(svgs.length).toBeGreaterThan(0);
+    render(<WeeklyActivityPanel leaderboardAggregate={AGG} />);
+    expect(document.querySelectorAll('svg').length).toBeGreaterThan(0);
   });
 });
