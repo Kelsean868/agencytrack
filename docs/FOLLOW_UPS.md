@@ -18,7 +18,7 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
-| `functions/` npm audit: a NEW high advisory on `node-forge` (GHSA-86w9-cpqp-85rv, range `*`, pulled in via `firebase-admin`) fails the "Audit dependencies (functions/, high/critical)" step, so EVERY PR's `functions-tests` check is red regardless of change; blocks L-3 (#1048). npm's only fix is `firebase-admin@14.5.0` (major bump) (banked 2026-10-02, FR Leaderboard L-2 post-merge fill). **Fix: PR `chore/functions-firebase-admin-13` pins `firebase-admin` to `^13.10.0` (Kyron ruling 2026-10-02, no node-forge in 13.10); stays open until merged AND all functions redeployed** | HIGH | CI / functions dependencies | — | see § functions/ npm audit: node-forge high advisory blocks functions-tests CI |
+| ~~**RESOLVED 2026-10-02 (PR #1049 `52527f9b`).**~~ `firebase-admin` pinned to `^13.10.0` (Kyron ruling 2026-10-02; 13.10 has no `node-forge`), so the functions audit exits 0. All 31 functions redeployed from a clean worktree at `52527f9b` (~13:12Z, exit 0); kiosk sign-in smoke OK (HTTP 200 at 14:40:22Z). Was: a NEW high advisory on `node-forge` (GHSA-86w9-cpqp-85rv, range `*`, pulled in via `firebase-admin`) failed the "Audit dependencies (functions/, high/critical)" step, so EVERY PR's `functions-tests` check was red regardless of change; it blocked L-3 (#1048) (banked 2026-10-02, FR Leaderboard L-2 post-merge fill) | HIGH | CI / functions dependencies | — | see § functions/ npm audit: node-forge high advisory blocks functions-tests CI |
 | `firebase-admin` 14 migration (namespace API removed): 14.0 drops `admin.firestore()` / `admin.auth()` / `admin.credential` / `admin.apps`, so moving off 13.x means rewriting ~145 files to modular imports; today's gates would FALSELY PASS that upgrade (lazy load + jest mocks). Also needs CI Node 20 → 22, a jest fix for ESM `jose`, and the `firebase-functions-test` peer cap. 13.x deprecates Node 20 (banked 2026-10-02, firebase-admin 13.10 pin) | MEDIUM | Functions dependencies | — | see § firebase-admin 14 migration (namespace API removed) |
 | L-2 real-app staging sweep waived under Rule 13 (Kyron offline): the board pass (Activity / API / Apps) on the FR Leaderboard route has not been walked in the real app on a staging build (banked 2026-10-02, FR Leaderboard L-2 post-merge fill) | MEDIUM | FR redesign / verification | — | see § L-2 deferred real-app staging sweep (Rule 13 waiver) |
 | Sunday cron weekly drafts go stale: written once at Sun 23:00 TT and never re-aggregated when a day is edited later (staging week 2026-08-23: days 52 pts, draft 39 pts); unit and branch managers get no draft at all (banked 2026-10-01, FR Leaderboard L-1 Phase 1) | MEDIUM | Daily → weekly aggregator | — | see § Sunday cron weekly drafts go stale |
@@ -29,6 +29,7 @@
 | Client `computeTotalNewNames` (`src/utils/extractFields.js:157`) omits `namesFromSeminarsAttended` and `namesFromTradeshowsConducted`, which the wizard total and the server `extractActivityFields` count; surfaces still on client `extractFields` under-count event names (banked 2026-10-02, FR Leaderboard L-1b) | LOW | Names / extractFields | — | see § Client computeTotalNewNames omits two event-name channels |
 | `rankForLeaderboard` in `functions/leaderboard/rankingLogic.js` has no runtime caller after FR Leaderboard L-1 (kept only by its cross-check test) (banked 2026-10-01) | LOW | Leaderboard / functions | — | see § rankForLeaderboard has no runtime caller after L-1 |
 | Kiosk panels still on weekly submissions: branch overview, running totals, awards watch, last-week recap, campaign standings and unit leaderboard read weekly reports, which agents no longer fill; L-3 moved only the ranked and activity panels to the leaderboard aggregate (banked 2026-10-01, FR Leaderboard L-3) | LOW | Kiosk / Leaderboard | — | see § Kiosk panels still on weekly submissions |
+| Money Needs commission targets: `CommissionTargetsPanel` (`src/components/agent/MoneyNeedsPanel.jsx`) copies `worksheet.firstYearCommissionsTargets` into local state in a `useEffect([worksheet])`, so a worksheet update that lands while the user types in a target field resets the field; near-zero window in practice (banked 2026-10-02, found while fixing the #1050 test race) | LOW | Money Needs / agent | — | see § Money Needs commission targets: worksheet sync effect can overwrite an in-progress edit |
 | Policies rules hit Firestore's 1000-expression limit on an update: several `policies` update arms report "maximum of 1000 expressions … reached" in the emulator (seen on a lapse write); a valid write whose allowing arm hits the limit would be denied (banked 2026-09-30, A-1) | MEDIUM | Firestore rules | — | see § Policies rules reach the 1000-expression limit |
 | FR Arena header (`FrArenaHeader`) is unused once R2-11 merges — the FR Leaderboard carries the standing — and its "settled API puts you there" note claims a source the board does not use (banked 2026-09-30, R2-11) | LOW | FR redesign / Compete | — | see § FR Arena header unused after R2-11 |
 | Commission playground ladder says "÷ comm · × settle", but API to write divides by the PERSISTENCY rate; settlement feeds nothing shown (Nexus look; the FR port omits the connector text) (banked 2026-09-30, R2-7) | MEDIUM | Commission playground | — | see § Commission playground ladder: the settle label does not match the math |
@@ -8391,9 +8392,11 @@ Ledger API and Apps are not affected: they are dated per policy by `dateIssued`.
 
 **Falsification (Rule 23):** closed when the report shows no new findings vs `docs/audits/fr-width-real-app-2026-10-01-w4.md` on the Leaderboard route with each of the three boards open.
 
-## functions/ npm audit: node-forge high advisory blocks functions-tests CI
+## ~~functions/ npm audit: node-forge high advisory blocks functions-tests CI~~ — RESOLVED 2026-10-02 (PR #1049 `52527f9b`)
 
 **Banked 2026-10-02 in the post-merge fill for #1047. Severity: HIGH. First seen 2026-10-02 on #1048 (FR Leaderboard L-3).**
+
+**RESOLVED 2026-10-02 (PR #1049 `52527f9b`, merged `2026-10-02T13:08:31Z`).** `firebase-admin` 12 → 13.10 in `functions/package.json` + lock (Kyron ruling: pin `^13.10.0`). 13.10 has no `node-forge`, so the functions audit gate passes (`npm audit --omit=dev --audit-level=high` in `functions/`: 9 moderate, no high). **Deployed:** all 31 functions from a clean worktree at `52527f9b`, finished ~13:12Z, exit 0. **Smokes:** `recomputeLeaderboardScheduled` run at 13:13Z, status ok; kiosk sign-in (`validateKioskToken`, custom token minted with ambient credentials) at 14:40:22Z returned HTTP 200, after the deploy. The original body below is kept as the record. The 14.x migration stays open as its own MEDIUM item (§ firebase-admin 14 migration (namespace API removed)).
 
 **Observed:** `npm audit --omit=dev --audit-level=high` in `functions/` (CI step "Audit dependencies (functions/, high/critical)", `.github/workflows/ci.yml`) now fails on GHSA-86w9-cpqp-85rv: `node-forge` RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements. Affected range `*` (all versions). `node-forge` arrives through `firebase-admin`. npm's only fix is `firebase-admin@14.5.0`, a major bump.
 
@@ -8406,7 +8409,7 @@ Ledger API and Apps are not affected: they are dated per policy by `dateIssued`.
 
 **Falsification (Rule 23):** overturned if `npm audit --omit=dev` in `functions/` passes on a clean install of `main` (the advisory is withdrawn or a patched `node-forge` is published).
 
-**Status 2026-10-02:** Kyron ruled a third option, not (a) or (b): pin `firebase-admin` to `^13.10.0`. 13.10 has no `node-forge` dependency, and the functions audit exits 0 (9 moderate). Option (a) was dropped because 14.x removes the namespace API — see § firebase-admin 14 migration (namespace API removed). Fix PR: `chore/functions-firebase-admin-13`. Close this item when that PR is merged AND all functions are redeployed.
+**Status 2026-10-02:** Kyron ruled a third option, not (a) or (b): pin `firebase-admin` to `^13.10.0`. 13.10 has no `node-forge` dependency, and the functions audit exits 0 (9 moderate). Option (a) was dropped because 14.x removes the namespace API — see § firebase-admin 14 migration (namespace API removed). Fix PR: `chore/functions-firebase-admin-13`. Closed once that PR was merged AND all functions were redeployed (done; see RESOLVED above).
 
 ## firebase-admin 14 migration (namespace API removed)
 
@@ -8481,3 +8484,13 @@ The migration PR needs a check that does not mock `firebase-admin`, for example 
 **Fix shape:** needs a ruling per panel on its source: the aggregate already holds per-agent period API, apps and points (unit totals can be summed from `unitId`); award progress and campaign standings need ledger data the kiosk cannot read today (no `policies` arm, brief A4), so they need either more fields on the aggregate (functions change, deploy-gated) or a separate aggregate doc. Any of these is a functions or rules change, so it is its own brief.
 
 **Falsification (Rule 23):** closed per panel if it stops reading `allSubmissions` (`git grep -n allSubmissions src/components/kiosk/panels`). Overturned if agents start filing weekly reports again, which would make the submission figures true.
+
+## Money Needs commission targets: worksheet sync effect can overwrite an in-progress edit
+
+**Banked 2026-10-02 in the post-merge fill for #1049, #1050, #1051, #1052, #1048 (found while fixing the #1050 test race). Severity: LOW.**
+
+**Observed:** `CommissionTargetsPanel` (`src/components/agent/MoneyNeedsPanel.jsx`) copies `worksheet.firstYearCommissionsTargets` into local `targets` state in a `useEffect([worksheet])`. If a worksheet update lands while the user is typing in a target field, the effect resets the field. It was found while fixing the #1050 test race. Near-zero window in practice.
+
+**Fix shape:** skip the sync while a field is focused or dirty, or derive the initial values once per worksheet year.
+
+**Falsification (Rule 23):** overturned if the panel no longer syncs worksheet into local state.

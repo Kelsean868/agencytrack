@@ -2235,3 +2235,31 @@ One PR, work, UI only. The Policy reconciliation Lapse tab now leaves out every 
 Three PRs, all work, no deploy needed. #1042 (`420fa3eb`): the `UnitFinancingRoster` draw-month chip tests freeze the clock (they failed 00:00–04:00 UTC on the 1st of each month). #1039 (`f19ff72e`, W-1): the width sweep - every harness scene inside the real app shell at 13 window widths and both themes, five breakage probes, a baseline report; widths are CSS pixels, and Kyron's two breaks reproduce at 1024 because the reporting PC runs Windows at 125 %. #1040 (`02827d41`, W-2): the screens that broke now follow the width they have (container queries); harness findings 381 → 178, every one a parked design item listed in #1040's body; nothing visible changes at 1440+ except the leaderboard legend, which now wraps instead of overflowing.
 
 **Next:** merge #1041 (W-3, the real-app sweep tool and its 2026-10-01 report). W-4 fixes what that run found (Awards at 1024, Numbers · History, report tiles, Career trajectory labels, Week toolbar, Game plan colliding labels); Kyron re-runs the real-app sweep on W-4. Human-merge.
+
+## Archived from CONTEXT.md - 2026-10-02 consolidated fill (PRs #1049, #1050, #1051, #1052, #1048)
+
+### Last updated - entry 3
+
+**FR fit-any-width W-3 + W-4 SHIPPED (2026-10-01); one consolidated fill for #1043 and #1041 (Rule 16(c)).** Ledger (PR · squash · Rule 16(b) class): #1043 `d7f3e9a6` work (W-4: the fixes from the W-3 real-app sweep - Awards grids, Numbers · History month groups and tiles, Production and Performance report tiles, Career trajectory column, Week toolbar, Game plan raises one value label; harness scenes `numbers-history`, `numbers-performance`) · #1041 `cc629cec` tooling, not work (W-3: `scripts/verification/fr-width-real-app.mjs`, the signed-in read-only real-app sweep on a local `--mode staging` build, and its first report `docs/audits/fr-width-real-app-2026-10-01.md`). **Real-app result:** first run (13:22Z) 72 findings on 7/24 routes, Weekly report not checked; re-run on W-4 (17:55Z) **14 findings on 2/24 routes, Weekly report checked**, all 14 parked kinds (History award-dot overhang, Game plan edge labels). That re-run report is committed in this fill as `docs/audits/fr-width-real-app-2026-10-01-w4.md`. **Deploy:** none needed; no deploy-gated surfaces touched (trigger empty).
+
+### Current main HEAD - entry 3
+
+`d7f3e9a6` (PR #1043 squash - fr-fit-any-width W-4; the last WORK squash: #1041 `cc629cec`, merged after it, is tooling only under Rule 16(b)). Merges `2026-10-01T18:37:51Z` (#1043) and `2026-10-01T19:10:32Z` (#1041). **Deploy-gated trigger: empty.** `git diff --stat a70a5210..cc629cec -- firestore.rules firestore.indexes.json storage.rules functions/` printed nothing; no deploy needed.
+
+### Active track - entry 3
+
+**(queue clear)** for `docs/briefs/fr-fit-any-width-kickoff.md`: W-1 (#1039), W-2 (#1040), W-3 (#1041) and W-4 (#1043) merged; the real-app re-run shows only parked items. The parked design items (podium figure on phones, axis labels on narrow charts, GateBars value-label collisions, edge labels and decoration overhangs, the ledger table scrolling sideways at 1024–1440) are listed in #1040 and #1043 and need Kyron's calls. Everything FR still sits behind the per-user agent opt-in (brief FR-D12).
+
+### Recently shipped rows (dropped when the #1048, #1052 and #1049 rows were added at the 5-row cap)
+
+| [#1043](https://github.com/Kelsean868/agencytrack/pull/1043), [#1041](https://github.com/Kelsean868/agencytrack/pull/1041) | `d7f3e9a6` · `cc629cec` | **FR fit-any-width W-3 + W-4.** W-3 (#1041, tooling) adds the signed-in, read-only real-app sweep on a local staging build (staging fixture agent; the weekly-report wizard probed as its own screen; the shell restored after every route). W-4 (#1043) fixes what its first run found: Awards grids, Numbers · History, the Production and Performance report tiles, the Career trajectory, the Week toolbar and the Game plan's colliding labels. Real-app findings 72 → 14, all parked kinds. No deploy. |
+| [#1039](https://github.com/Kelsean868/agencytrack/pull/1039), [#1040](https://github.com/Kelsean868/agencytrack/pull/1040), [#1042](https://github.com/Kelsean868/agencytrack/pull/1042) | `f19ff72e` · `02827d41` · `420fa3eb` | **FR fit-any-width W-1 + W-2, and a roster test clock fix.** W-1 (#1039) adds the width sweep: harness scenes inside the real app shell (`?frame=app`), 13 window widths in both themes, five breakage probes and a baseline report. W-2 (#1040) makes the ledger header and award card, the game plan grids, trophy shelves, career ladder, leaderboard champions and Donut legends follow the width they have (container queries); Kyron's two reported breaks (ledger header, Advisor-of-the-Month card) are fixed. #1042 freezes the clock in the `UnitFinancingRoster` draw-month tests. No deploy. |
+| [#1037](https://github.com/Kelsean868/agencytrack/pull/1037) | `41d70588` | **fix(manager): hide head-office policies on the Lapse tab (Kyron ruling 2B).** The Policy reconciliation Lapse tab leaves out every policy where `isFromHeadOffice`, shows one aria-live count line for how many are not shown, and the empty state reads accurately. UI only (`PolicyReconciliationPanel.jsx` + its test); no rules, service, functions or index change, so no deploy. Closes the last slice of `docs/briefs/fr-round2-followups.md`. |
+
+### Where we left off - PRIOR block (oldest)
+
+**PRIOR - 2026-10-01. FR fit-any-width W-3 + W-4 merged: #1043 (squash `d7f3e9a6`, merged `2026-10-01T18:37:51Z`) and #1041 (squash `cc629cec`, merged `2026-10-01T19:10:32Z`).**
+
+Two PRs, no deploy needed. #1041 (W-3, tooling): `fr-width-real-app.mjs` signs in as the staging fixture agent on a local `--mode staging` build, aborts every write, and runs the W-1 probes on every FR agent route at 1024/1280/1366/1440/390 in both themes; pop-ups are closed with Escape, the weekly-report wizard is probed as its own screen, and the shell is restored after every route. #1043 (W-4) fixed the first run's findings. Kyron's re-run on W-4: 14 findings on 2/24 routes (down from 72 on 7), all parked kinds; that report is committed in this fill.
+
+**Next:** the fit-any-width queue is clear. The parked design items in #1040 and #1043 need Kyron's calls before any more width work.
