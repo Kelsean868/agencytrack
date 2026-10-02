@@ -120,3 +120,45 @@ PR-ready report with feature-branch HEAD SHA (Rule 20) · CodeRabbit disposition
 ## 7. Out of scope (bank as FUs if touched)
 
 Rest Assured board · manager/SM leaderboard surfaces · lifetime `leaderboard/{uid}.points` model (FOLLOW_UPS ~L2994) · multi-tenant schedule · other kiosk panels (L-3 item 4) · agent "My insight" (its own brief, next).
+
+---
+
+## Amendment A1 (2 Oct 2026): the kiosk Weekly Activity slide keeps the design
+
+**Why.** L-3 item 2 above turned the kiosk's two-column Weekly Activity slide into one Points column. That contradicts D13 ("Kiosk keeps its look") and the canonical mockup. The mockup is `docs/design-system/screens-v2/AgencyTrack Kiosk Mode.html`, panel 08 `RefWeeklyActivity` in `kiosk-refined-b.jsx:339`. It shows two columns: **Prospecting (names + calls)** and **Conversions (FFIs + CIs)**. Kyron's ruling (2 Oct 2026): keep the design. The aggregate holds only `points`, so it must also carry the four counts.
+
+**Supersedes:** L-3 item 2. D5 is unchanged; the counts follow the same source rule.
+
+### Decisions locked (A1)
+
+- **A1-D1, count source.** Per agent per week, use the D5 rule exactly as points do. A week with a SUBMITTED report takes that report's counts. Any other week sums its `dailyActivity` entries. Drafts are never read.
+- **A1-D2, report counts** come from `extractActivityFields(sub)` in `functions/utils/fieldHelpers.js:40`, which Agent of the Month already uses:
+  - `names` = `totalNewNames`, which includes the two event-name channels that the wizard total (`StepNewNamesAdded.jsx:18-22`) also counts;
+  - `calls` = `totalTelAttempts`;
+  - `ffi` = `ffiConducted`;
+  - `ci` = `ciConducted`.
+- **A1-D3, daily counts** map the entry with the **same** mapping `computeDayPoints` uses (`functions/lib/dayPoints.js`), then apply `extractActivityFields`. So `dials` gives calls, `newNamesAdded` gives names, and `ffiConducted`/`ciConducted` pass through.
+  - Refactor `dayPoints.js` to export the mapping as `mapDayToReportFields(entry)` and keep `computeDayPoints = computePoints(mapDayToReportFields(entry))`. This keeps points and counts on one mapping.
+  - The client twin and `dayPoints.cross-check.test.js` must still pass unchanged. If the cross-check needs a client edit: **STOP and wait for dispatcher**.
+- **A1-D4, stored shape.** Every period entry (`ytd`/`qtd`/`mtd`/`week`) gains `activity: { names, calls, ffi, ci }`, as integers. The field is additive: no key is renamed or removed, there is no rules change and no index. Only `week` is read by the kiosk today.
+- **A1-D5, kiosk slide.** `WeeklyActivityPanel` returns to the main-branch layout: two `ActivityLeaderboard` columns, titles "Prospecting" "(Names + Calls)" and "Conversions" "(FFIs + CIs)", the same icons and empty messages, and the per-row breakdown (`names`/`calls`, `FFIs`/`CIs`).
+  - Rows come from the aggregate's `week` entries.
+  - Each column filters `total > 0`, sorts by total descending, then by name ascending (deterministic ties), and caps at the rows that fit (the existing `MAX_ROWS`).
+  - An aggregate whose entries lack `activity` (written before the L-1b deploy) renders each column's empty state. Never fake zeros as data.
+- **A1-D6, monotonicity** (v3 non-negotiable 3). Adding a report or a daily entry never lowers any count. Add a unit test.
+
+### Slices (A1)
+
+- **L-1b (functions · human-merge · deploy-gated):** `functions/leaderboard/boardMetrics.js` (week counts beside week points, `metricsFor` sums them per window, `periodEntries` writes `activity`), `functions/lib/dayPoints.js` (mapping export), tests.
+  - Dry-run on staging with `scripts/verification/fr-lb-l1-dryrun-staging.mjs` and paste back the table, adding the four counts.
+  - Kyron merges; the dispatcher deploys `recomputeLeaderboardScheduled` and `recomputeLeaderboardOnDemand` only, then runs the scheduler job once and reads one branch doc to show `activity` is present.
+- **L-3 (amend open PR #1048):** `WeeklyActivityPanel.jsx` plus its test. Reuse `kioskBoardRows` only if it fits the two-column sort without changing the shared ranker; otherwise use a local sort in the panel. **Merge #1048 only after the L-1b deploy**, or the slide shows its empty state until then.
+
+### Stops (A1)
+
+- **STOP and wait for dispatcher:** any change to `computePoints`, `POINTS_WEIGHTS` or the shared ranker; any need for a rules or index change; a staging dry-run where `week` points are greater than 0 but all four counts are 0 for the same agent (mapping bug).
+- **STOP IMMEDIATELY:** any write to production from a script.
+
+### FU to bank in L-1b (Rule 7(b), append at end)
+
+Client `computeTotalNewNames` (`src/utils/extractFields.js:157`) omits `namesFromSeminarsAttended` and `namesFromTradeshowsConducted`, which the wizard total and the server `extractActivityFields` count. The surfaces still on client `extractFields` under-count event names. Severity LOW.
