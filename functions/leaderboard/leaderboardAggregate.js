@@ -36,6 +36,7 @@ const {
   ledgerCreditsByAgent,
   submittedWeeksByAgent,
   weekPointsByAgent,
+  weekCountsByAgent,
   priorRanksForBranch,
   periodEntries,
   isChampionCandidate,
@@ -273,6 +274,7 @@ function computeLeaderboards(inputs, referenceDate) {
   const ctx = {
     creditsByAgent: ledgerCreditsByAgent(policies),
     weekPointsByAgent: weekPointsByAgent(submissions, dailiesByAgent),
+    weekCountsByAgent: weekCountsByAgent(submissions, dailiesByAgent),
   };
 
   const { byBranch, skippedNoBranch } = groupByBranch(submissions, users);

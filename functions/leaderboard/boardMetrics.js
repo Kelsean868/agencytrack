@@ -22,6 +22,14 @@
 // is edited later). A week is placed in a period by its `weekStarting`; weeks
 // are not split.
 //
+// A1 (2 Oct 2026) — activity counts. The same D5 source rule, per week, gives
+// four integer counts { names, calls, ffi, ci } beside the points: a submitted
+// report's counts via extractActivityFields (A1-D2); other weeks sum their
+// daily entries, each mapped with the SAME mapping computeDayPoints uses
+// (mapDayToReportFields, A1-D3). Each source document is floored (Math.floor)
+// before it is summed, as points floor per document. Every period entry carries
+// them as `activity` (A1-D4).
+//
 // Ranking (D7): one ranker for every board. Order = the board's metric desc,
 // then the remaining metrics in the fixed order periodApi → apps → points
 // (desc), then name, then agentId. For the API board this is today's order
@@ -30,7 +38,8 @@
 const { getPeriodBoundaries } = require('./rankingLogic');
 const { settledCreditList } = require('../lib/ledgerCredit');
 const { computePoints } = require('../lib/computePoints');
-const { computeDayPoints } = require('../lib/dayPoints');
+const { computeDayPoints, mapDayToReportFields } = require('../lib/dayPoints');
+const { extractActivityFields } = require('../utils/fieldHelpers');
 
 const TRINI_OFFSET_MS = 4 * 60 * 60 * 1000;
 
@@ -137,6 +146,63 @@ function weekPointsByAgent(submissions, dailiesByAgent) {
   return out;
 }
 
+// ── A1: activity counts per agent per week ───────────────────────────────────
+
+const ZERO_COUNTS = Object.freeze({ names: 0, calls: 0, ffi: 0, ci: 0 });
+
+/** Integer counts of one report-shaped document (A1-D2). */
+function countsOf(fields) {
+  const a = extractActivityFields(fields);
+  return {
+    names: Math.floor(a.totalNewNames),
+    calls: Math.floor(a.totalTelAttempts),
+    ffi: Math.floor(a.ffiConducted),
+    ci: Math.floor(a.ciConducted),
+  };
+}
+
+function addCounts(into, c) {
+  into.names += c.names;
+  into.calls += c.calls;
+  into.ffi += c.ffi;
+  into.ci += c.ci;
+}
+
+/**
+ * Map<agentId, Map<weekStarting, { names, calls, ffi, ci }>> under the same
+ * rule as weekPointsByAgent (A1-D1): a SUBMITTED report's week takes the
+ * report(s); any other week sums its daily entries; drafts are never read;
+ * days in a week with a submitted report are ignored.
+ */
+function weekCountsByAgent(submissions, dailiesByAgent) {
+  const out = new Map();
+  const add = (agentId, ws, c) => {
+    if (!out.has(agentId)) out.set(agentId, new Map());
+    const weeks = out.get(agentId);
+    if (!weeks.has(ws)) weeks.set(ws, { ...ZERO_COUNTS });
+    addCounts(weeks.get(ws), c);
+  };
+
+  const submitted = submittedWeeksByAgent(submissions);
+  for (const s of Array.isArray(submissions) ? submissions : []) {
+    if (!s || s.status !== 'submitted' || typeof s.weekStarting !== 'string') continue;
+    const agentId = subAgentId(s);
+    if (!agentId) continue;
+    add(agentId, s.weekStarting, countsOf(s));
+  }
+
+  const dailies = dailiesByAgent instanceof Map ? dailiesByAgent : new Map();
+  for (const [agentId, days] of dailies.entries()) {
+    const reported = submitted.get(agentId) || new Set();
+    for (const day of Array.isArray(days) ? days : []) {
+      const ws = day && day.weekStarting;
+      if (typeof ws !== 'string' || reported.has(ws)) continue;
+      add(agentId, ws, countsOf(mapDayToReportFields(day)));
+    }
+  }
+  return out;
+}
+
 // ── Per-agent metrics in one window ──────────────────────────────────────────
 
 function metricsFor(agentId, window, ctx) {
@@ -151,7 +217,11 @@ function metricsFor(agentId, window, ctx) {
   for (const [ws, pts] of (ctx.weekPointsByAgent.get(agentId) || new Map()).entries()) {
     if (inWindow(ws, window)) points += pts;
   }
-  return { periodApi: cents(api), apps, points };
+  const activity = { ...ZERO_COUNTS };
+  for (const [ws, c] of (ctx.weekCountsByAgent.get(agentId) || new Map()).entries()) {
+    if (inWindow(ws, window)) addCounts(activity, c);
+  }
+  return { periodApi: cents(api), apps, points, activity };
 }
 
 // ── Ranking (D7) ─────────────────────────────────────────────────────────────
@@ -227,6 +297,7 @@ function periodEntries(branchUsers, period, referenceDate, ctx, unitNameByMgrUid
       periodApi: r.periodApi,
       apps: r.apps,
       points: r.points,
+      activity: r.activity,
       rank: i + 1,
       rankWithinUnit,
       previousRank: prev ? prev.api : null,
@@ -273,6 +344,7 @@ module.exports = {
   ledgerCreditsByAgent,
   submittedWeeksByAgent,
   weekPointsByAgent,
+  weekCountsByAgent,
   metricsFor,
   sortByMetric,
   ranksByMetric,

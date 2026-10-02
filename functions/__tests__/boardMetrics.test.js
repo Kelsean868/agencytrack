@@ -8,6 +8,7 @@ const {
   sundaysBetween,
   ledgerCreditsByAgent,
   weekPointsByAgent,
+  weekCountsByAgent,
   metricsFor,
   sortByMetric,
   priorRanksForBranch,
@@ -15,7 +16,7 @@ const {
   weeklyChampions,
 } = require('../leaderboard/boardMetrics');
 const { computePoints } = require('../lib/computePoints');
-const { computeDayPoints } = require('../lib/dayPoints');
+const { computeDayPoints, mapDayToReportFields } = require('../lib/dayPoints');
 
 // Fri 15 May 2026, 06:00 TT. Week = Sun 10 – Sat 16 May. Prior week = 3 – 9 May.
 const REF = new Date('2026-05-15T10:00:00Z');
@@ -42,6 +43,7 @@ function ctxOf({ policies = [], submissions = [], dailies = new Map() } = {}) {
   return {
     creditsByAgent: ledgerCreditsByAgent(policies),
     weekPointsByAgent: weekPointsByAgent(submissions, dailies),
+    weekCountsByAgent: weekCountsByAgent(submissions, dailies),
   };
 }
 
@@ -114,7 +116,7 @@ describe('D2 — settled API from the ledger, dated by dateIssued', () => {
 
   test('API is rounded to cents (lump sums earn 10%)', () => {
     const p = [mkPolicy('l', 'a1', '2026-05-11', 333.33, { newBusinessType: 'lumpsum' })];
-    expect(metrics('a1', 'week', REF, { policies: p })).toEqual({ periodApi: 33.33, apps: 0, points: 0 });
+    expect(metrics('a1', 'week', REF, { policies: p })).toEqual({ periodApi: 33.33, apps: 0, points: 0, activity: { names: 0, calls: 0, ffi: 0, ci: 0 } });
   });
 });
 
@@ -213,6 +215,157 @@ describe('D5 — points: submitted report wins its week; other weeks sum the day
   test('userId is the fallback owner of a report', () => {
     const subs = [{ ...mkReport(undefined, '2026-05-10', reportFields), agentId: undefined, userId: 'a1' }];
     expect(metrics('a1', 'week', REF, { submissions: subs }).points).toBe(20);
+  });
+});
+
+// ── A1 — activity counts: the D5 source rule, four integers per week ─────────
+
+describe('A1 — activity counts: submitted report wins its week; other weeks sum the days', () => {
+  const act = (agentId, period, inputs) => metrics(agentId, period, REF, inputs).activity;
+  const reportFields = {
+    namesFromColdCanvass: 2, referralsObtained: 1, namesFromSeminarsAttended: 3, namesFromTradeshowsConducted: 1, namesFromOther: 1,
+    coldCalls: 10, referralCalls: 2, followUpCalls: 3, seminarTradeshowCalls: 1,
+    ffiConducted: 2, ciConducted: 1,
+  };
+  const dayA = mkDay('2026-05-11', '2026-05-10', { dials: 10, newNamesAdded: 2, ffiConducted: 1 });
+  const dayB = mkDay('2026-05-12', '2026-05-10', { dials: 5, newNamesAdded: 1, ciConducted: 1, serviceCalls: 4 });
+
+  test('report counts come from extractActivityFields (A1-D2), incl. the event-name channels', () => {
+    const subs = [mkReport('a1', '2026-05-10', reportFields)];
+    // names 2+1+3+1+1 = 8 · calls 10+2+3+1 = 16
+    expect(act('a1', 'week', { submissions: subs })).toEqual({ names: 8, calls: 16, ffi: 2, ci: 1 });
+  });
+
+  test('daily counts use the computeDayPoints mapping (A1-D3): dials → calls, newNamesAdded → names', () => {
+    const dailies = new Map([['a1', [dayA, dayB]]]);
+    // serviceCalls is not a prospecting call: it must not leak into calls
+    expect(act('a1', 'week', { dailies })).toEqual({ names: 3, calls: 15, ffi: 1, ci: 1 });
+  });
+
+  test('week with a submitted report counts the report, not its days (A1-D1)', () => {
+    const subs = [mkReport('a1', '2026-05-10', reportFields)];
+    const dailies = new Map([['a1', [dayA, dayB]]]);
+    expect(act('a1', 'week', { submissions: subs, dailies })).toEqual({ names: 8, calls: 16, ffi: 2, ci: 1 });
+  });
+
+  test('a draft is never read — its week counts the days', () => {
+    const subs = [mkReport('a1', '2026-05-10', { ffiConducted: 99, coldCalls: 99 }, 'draft')];
+    const dailies = new Map([['a1', [dayA, dayB]]]);
+    expect(act('a1', 'week', { submissions: subs, dailies })).toEqual({ names: 3, calls: 15, ffi: 1, ci: 1 });
+  });
+
+  test('a draft alone yields zero counts', () => {
+    const subs = [mkReport('a1', '2026-05-10', { ffiConducted: 99 }, 'draft')];
+    expect(act('a1', 'week', { submissions: subs })).toEqual({ names: 0, calls: 0, ffi: 0, ci: 0 });
+  });
+
+  test('reports in other weeks do not suppress this week’s days; windows sum weeks', () => {
+    const subs = [mkReport('a1', '2026-05-03', { ffiConducted: 2, coldCalls: 4 })];
+    const dailies = new Map([['a1', [dayA]]]);
+    expect(act('a1', 'week', { submissions: subs, dailies })).toEqual({ names: 2, calls: 10, ffi: 1, ci: 0 });
+    expect(act('a1', 'mtd', { submissions: subs, dailies })).toEqual({ names: 2, calls: 14, ffi: 3, ci: 0 });
+  });
+
+  test('a week is placed by weekStarting, never split (same rule as points)', () => {
+    const days = [mkDay('2026-05-01', '2026-04-26', { ciConducted: 1 })];
+    const dailies = new Map([['a1', days]]);
+    expect(act('a1', 'mtd', { dailies }).ci).toBe(0);
+    expect(act('a1', 'quarter', { dailies }).ci).toBe(1);
+  });
+
+  test('integers: each source document is floored before it is summed', () => {
+    const subs = [mkReport('a1', '2026-05-03', { coldCalls: 2.9, namesFromOther: 1.5, ffiConducted: 0.9 })];
+    const dailies = new Map([['a1', [
+      mkDay('2026-05-11', '2026-05-10', { dials: 3.7, ffiConducted: 1.5 }),
+      mkDay('2026-05-12', '2026-05-10', { dials: 3.7, ffiConducted: 1.5 }),
+    ]]]);
+    // report week: calls 2, names 1, ffi 0 · day week: calls 3+3, ffi 1+1
+    expect(act('a1', 'mtd', { submissions: subs, dailies })).toEqual({ names: 1, calls: 8, ffi: 2, ci: 0 });
+  });
+
+  test('userId is the fallback owner of a report', () => {
+    const subs = [{ ...mkReport(undefined, '2026-05-10', { ciConducted: 2 }), agentId: undefined, userId: 'a1' }];
+    expect(act('a1', 'week', { submissions: subs }).ci).toBe(2);
+  });
+
+  test('an agent with no activity gets zero counts, not undefined', () => {
+    expect(act('nobody', 'ytd', {})).toEqual({ names: 0, calls: 0, ffi: 0, ci: 0 });
+  });
+
+  test('counts and points share one source rule: a scored day shows counts', () => {
+    const day = mkDay('2026-05-11', '2026-05-10', { dials: 10, ffiConducted: 1, newNamesAdded: 2 });
+    const m = metrics('a1', 'week', REF, { dailies: new Map([['a1', [day]]]) });
+    expect(m.points).toBeGreaterThan(0);
+    expect(m.activity).toEqual({ names: 2, calls: 10, ffi: 1, ci: 0 });
+  });
+});
+
+describe('A1-D4 — every period entry carries activity', () => {
+  test('periodEntries writes activity { names, calls, ffi, ci } on week, mtd, quarter and ytd entries', () => {
+    const users = [
+      { id: 'a1', name: 'Alpha', role: 'agent', unitId: null },
+      { id: 'a2', name: 'Beta', role: 'agent', unitId: null },
+    ];
+    const ctx = ctxOf({
+      submissions: [mkReport('a1', '2026-05-10', { coldCalls: 7, ffiConducted: 1 })],
+      dailies: new Map([['a2', [mkDay('2026-05-11', '2026-05-10', { dials: 3, newNamesAdded: 1 })]]]),
+    });
+    const prior = priorRanksForBranch(users, new Date('2026-05-08T10:00:00Z'), ctx);
+    for (const period of ['week', 'mtd', 'quarter', 'ytd']) {
+      const entries = periodEntries(users, period, REF, ctx, {}, prior);
+      expect(entries).toHaveLength(2);
+      for (const e of entries) {
+        expect(Object.keys(e.activity).sort()).toEqual(['calls', 'ci', 'ffi', 'names']);
+        for (const v of Object.values(e.activity)) expect(Number.isInteger(v)).toBe(true);
+      }
+      expect(entries.find((e) => e.agentId === 'a1').activity).toEqual({ names: 0, calls: 7, ffi: 1, ci: 0 });
+      expect(entries.find((e) => e.agentId === 'a2').activity).toEqual({ names: 1, calls: 3, ffi: 0, ci: 0 });
+    }
+  });
+
+  test('activity is additive: every pre-existing entry key is still there', () => {
+    const users = [{ id: 'a1', name: 'Alpha', role: 'agent', unitId: null }];
+    const [e] = periodEntries(users, 'week', REF, ctxOf(), {}, new Map());
+    expect(Object.keys(e).sort()).toEqual([
+      'activity', 'agentId', 'apps', 'name', 'periodApi', 'points', 'previousRank', 'previousRanks',
+      'rank', 'rankWithinUnit', 'unitId', 'unitName',
+    ]);
+  });
+});
+
+describe('A1 — mapDayToReportFields and computeDayPoints', () => {
+  test('mapDayToReportFields returns the exact report-shaped object', () => {
+    const entry = {
+      date: '2026-05-11', weekStarting: '2026-05-10', dials: '12', newNamesAdded: '3', serviceCalls: 2.9,
+      newBusiness: { apps: '1', api: '1500.5' }, ffiConducted: 2,
+    };
+    expect(mapDayToReportFields(entry)).toEqual({
+      ...entry,
+      coldCalls: 12, referralCalls: 0, followUpCalls: 0, seminarTradeshowCalls: 0,
+      applicationsSold: 1, apiSold: 1500.5, namesFromOther: 3, serviceCalls: 2, version: 1,
+    });
+  });
+
+  test('mapDayToReportFields does not mutate the entry', () => {
+    const entry = Object.freeze({ dials: 5, newBusiness: Object.freeze({ apps: 1, api: 10 }) });
+    expect(() => mapDayToReportFields(entry)).not.toThrow();
+  });
+
+  test('computeDayPoints is unchanged: computePoints(mapDayToReportFields(entry)), 0 for no entry', () => {
+    expect(computeDayPoints(null)).toBe(0);
+    expect(computeDayPoints(undefined)).toBe(0);
+    const entries = [
+      {},
+      { dials: 10, ffiConducted: 1 },
+      { appointmentsSet: 2 },
+      { prospectingLettersSent: 30 },
+      { dials: 4, newNamesAdded: 2, serviceCalls: 3, newBusiness: { apps: 1, api: 2500 }, ciConducted: 1 },
+    ];
+    for (const e of entries) expect(computeDayPoints(e)).toBe(computePoints(mapDayToReportFields(e)));
+    // pinned values (same fixtures the D5 group relies on)
+    expect(computeDayPoints({ dials: 10, ffiConducted: 1 })).toBe(15);
+    expect(computeDayPoints({ appointmentsSet: 2 })).toBe(6);
+    expect(computeDayPoints({ ciConducted: 1 })).toBe(10);
   });
 });
 
@@ -416,6 +569,67 @@ describe('monotonicity (v3 rule 3)', () => {
           const b = metrics(agent, period, REF, state).points;
           const a = metrics(agent, period, REF, { ...state, dailies }).points;
           if (a < b) throw new Error(`${label} run ${i} ${period}: ${b} → ${a} adding ${JSON.stringify(day)}`);
+        }
+      }
+    });
+  }
+});
+
+describe('A1-D6 — activity counts are monotonic (v3 rule 3)', () => {
+  const COUNT_KEYS = ['names', 'calls', 'ffi', 'ci'];
+  const genActivityDay = (r) => ({ ...genDay(r), newNamesAdded: Math.floor(r() * 5) });
+  const genReport = (r, agent) => mkReport(agent, WEEKS[Math.floor(r() * WEEKS.length)], {
+    namesFromColdCanvass: Math.floor(r() * 4), namesFromSeminarsAttended: Math.floor(r() * 3),
+    coldCalls: Math.floor(r() * 30), followUpCalls: Math.floor(r() * 10),
+    ffiConducted: Math.floor(r() * 3), ciConducted: Math.floor(r() * 2),
+  });
+  // genDay has no names: give every generated day some so the names count is exercised too.
+  const withNames = (r, state) => ({
+    ...state,
+    dailies: new Map([...state.dailies].map(([a, ds]) => [a, ds.map((d) => ({ ...d, newNamesAdded: Math.floor(r() * 5) }))])),
+  });
+  const lowered = (b, a) => COUNT_KEYS.some((k) => a[k] < b[k]);
+
+  for (const [label, dense, runs] of [['broad', false, 300], ['dense', true, 300]]) {
+    test(`${label}: adding a logged day never lowers any count`, () => {
+      const r = rng(dense ? 21 : 17);
+      const agents = dense ? ['a1'] : ['a1', 'a2', 'a3'];
+      for (let i = 0; i < runs; i++) {
+        const state = withNames(r, genState(r, agents, dense));
+        const agent = agents[Math.floor(r() * agents.length)];
+        const day = genActivityDay(r);
+        const dailies = new Map(state.dailies);
+        dailies.set(agent, [...(dailies.get(agent) || []), day]);
+        for (const period of PERIODS) {
+          const b = metrics(agent, period, REF, state).activity;
+          const a = metrics(agent, period, REF, { ...state, dailies }).activity;
+          if (lowered(b, a)) throw new Error(`${label} run ${i} ${period}: ${JSON.stringify(b)} → ${JSON.stringify(a)} adding ${JSON.stringify(day)}`);
+        }
+      }
+    });
+
+    // D5 says the report WINS its week: a report smaller than that week's days
+    // legitimately lowers the figure (the days stop counting). So the report
+    // here carries at least the totals of the days it lands on, i.e. it is a
+    // report that includes the work already logged day by day.
+    test(`${label}: adding a submitted report that covers its week's days never lowers any count`, () => {
+      const r = rng(dense ? 31 : 29);
+      const agents = dense ? ['a1'] : ['a1', 'a2', 'a3'];
+      for (let i = 0; i < runs; i++) {
+        const state = withNames(r, genState(r, agents, dense));
+        const agent = agents[Math.floor(r() * agents.length)];
+        const report = genReport(r, agent);
+        const days = (state.dailies.get(agent) || []).filter((d) => d.weekStarting === report.weekStarting);
+        const floorSum = (f) => days.reduce((n, d) => n + Math.floor(Number(f(d)) || 0), 0);
+        report.coldCalls = Math.max(report.coldCalls, floorSum((d) => d.dials));
+        report.namesFromOther = Math.max(report.namesFromOther || 0, floorSum((d) => d.newNamesAdded));
+        report.ffiConducted = Math.max(report.ffiConducted, floorSum((d) => d.ffiConducted));
+        report.ciConducted = Math.max(report.ciConducted, floorSum((d) => d.ciConducted));
+        const after = { ...state, submissions: [...state.submissions, report] };
+        for (const period of PERIODS) {
+          const b = metrics(agent, period, REF, state).activity;
+          const a = metrics(agent, period, REF, after).activity;
+          if (lowered(b, a)) throw new Error(`${label} run ${i} ${period}: ${JSON.stringify(b)} → ${JSON.stringify(a)} adding ${JSON.stringify(report)}`);
         }
       }
     });
