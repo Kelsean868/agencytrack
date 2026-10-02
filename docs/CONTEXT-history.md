@@ -2209,3 +2209,29 @@ Kyron's rulings of 30-09-2026: 1A - a producing manager keeps the own-policy pat
 One PR, work, UI only. The Policy reconciliation Lapse tab now leaves out every policy whose status came from head office (`isFromHeadOffice`), shows an aria-live count of how many are not shown, and the empty state reads accurately when only head-office policies exist (Kyron ruling 2B, 30-09-2026). No rules, service, functions or index change; the deploy-gated trigger is empty, so no deploy is needed.
 
 **Next:** the `docs/briefs/fr-round2-followups.md` queue is clear. What is next is in `docs/FOLLOW_UPS.md`.
+
+## Archived from CONTEXT.md - 2026-10-02 post-merge fill (PR #1047)
+
+### Last updated - entry 3
+
+**FR fit-any-width W-1 + W-2 SHIPPED (2026-10-01); one consolidated fill for #1042, #1039, #1040 (Rule 16(c)).** Ledger (PR · squash · Rule 16(b) class): #1042 `420fa3eb` work (test-only, `src/` test file: the `UnitFinancingRoster` draw-month chip tests freeze the clock, so they no longer fail 00:00–04:00 UTC on the 1st of a month) · #1039 `f19ff72e` work (W-1 width sweep: harness `?frame=app` inside the real shell, `fr-harness-walk.mjs --sweep`, five breakage probes, ledger harness scenes, the `FR_HARNESS_STUB_FIREBASE` dev-server opt-in in `vite.config.js`, baseline `docs/audits/fr-width-sweep-2026-09-30.md`) · #1040 `02827d41` work (W-2 layout fixes with container queries, `@tailwindcss/container-queries`: ledger header and award card, game plan grids, trophy shelves, career ladder, leaderboard champions, Donut legend; harness sweep 381 → 178 findings, all parked; nothing visible changes at 1440+ except the leaderboard legend wrap fix). Also merged, docs-only, no row (Rule 16(b)): #1038 `b4706475` (the kickoff brief). #1037 was already filled in `9d506a39`. **Deploy:** none needed; no deploy-gated surfaces touched (trigger empty). **Open:** #1041 (W-3 real-app sweep; Kyron's staging run 2026-10-01 13:22Z found 72 findings on 7/24 routes) and W-4 (the fixes from that run) in progress.
+
+### Current main HEAD - entry 3
+
+`02827d41` (PR #1040 squash - fr-fit-any-width W-2; the last work squash of this batch). Merges `2026-10-01T14:27:02Z` (#1042) to `2026-10-01T14:27:58Z` (#1040). **Deploy-gated trigger: empty.** `git diff --stat 9d506a39..02827d41 -- firestore.rules firestore.indexes.json storage.rules functions/` printed nothing; no deploy needed.
+
+### Active track - entry 3
+
+**FR fit-any-width** (`docs/briefs/fr-fit-any-width-kickoff.md`): W-1 (#1039) and W-2 (#1040) merged. W-3 (#1041, real-app sweep on a local staging build, read-only, staging fixture agent) open and ready to merge. W-4 (fixes from the W-3 run: Awards at 1024, Numbers · History, Production and Performance report tiles, Career trajectory labels, Week toolbar, Game plan colliding labels) in progress, human-merge. The parked design items are listed in #1040's body. Everything FR still sits behind the per-user agent opt-in (brief FR-D12).
+
+### Recently shipped row (dropped when #1047 became the 6th row)
+
+| [#1034](https://github.com/Kelsean868/agencytrack/pull/1034), [#1035](https://github.com/Kelsean868/agencytrack/pull/1035), [#1036](https://github.com/Kelsean868/agencytrack/pull/1036) | `a70f180f` · `ad544d62` · `ee1e4bcd` | **FR round 2c + audit fix.** F-3 (#1034 `a70f180f`): Career reads applications through `extractFields` (all schemas). F-4 (#1035 `ad544d62`): a manager may not change a head-office status (`firestore.rules` Arm D + `lapsePolicy` guard); rules deployed by Kyron 2026-09-30. #1036 (`ee1e4bcd`): clears the root npm audit highs (`@grpc/grpc-js` override, `dompurify` 3.4.16). |
+
+### Where we left off - PRIOR block (oldest)
+
+**PRIOR - 2026-10-01. FR fit-any-width W-1 + W-2 merged: #1042, #1039, #1040 (last work squash `02827d41`, merged `2026-10-01T14:27:58Z`).**
+
+Three PRs, all work, no deploy needed. #1042 (`420fa3eb`): the `UnitFinancingRoster` draw-month chip tests freeze the clock (they failed 00:00–04:00 UTC on the 1st of each month). #1039 (`f19ff72e`, W-1): the width sweep - every harness scene inside the real app shell at 13 window widths and both themes, five breakage probes, a baseline report; widths are CSS pixels, and Kyron's two breaks reproduce at 1024 because the reporting PC runs Windows at 125 %. #1040 (`02827d41`, W-2): the screens that broke now follow the width they have (container queries); harness findings 381 → 178, every one a parked design item listed in #1040's body; nothing visible changes at 1440+ except the leaderboard legend, which now wraps instead of overflowing.
+
+**Next:** merge #1041 (W-3, the real-app sweep tool and its 2026-10-01 report). W-4 fixes what that run found (Awards at 1024, Numbers · History, report tiles, Career trajectory labels, Week toolbar, Game plan colliding labels); Kyron re-runs the real-app sweep on W-4. Human-merge.
