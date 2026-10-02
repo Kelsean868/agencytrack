@@ -1,81 +1,71 @@
 import React, { useMemo } from 'react';
 import { Activity, TrendingUp } from 'lucide-react';
-import { filterSubmissionsByPeriod } from '../../../lib/productionReport/computations';
-import { extractFields } from '../../../utils/extractFields';
-import { buildSubmissionNameMap } from '../../../lib/kiosk/utils';
+import { kioskPeriodEntries, kioskActivityCounts } from '../../../lib/kiosk/kioskBoards';
 import ActivityLeaderboard from './ActivityLeaderboard';
 
-function buildActivityAgents(weekSubs, allUsers, computeTotal, breakdownDefs) {
-  const nameByAgent = buildSubmissionNameMap(weekSubs);
-  const agentMap = {};
-  for (const sub of weekSubs) {
-    const aid = sub.agentId ?? sub.userId ?? '';
-    if (!aid) continue;
-    if (!agentMap[aid]) agentMap[aid] = { subs: [] };
-    agentMap[aid].subs.push(sub);
-  }
-
-  const rows = Object.entries(agentMap).map(([agentId, { subs }]) => {
-    const user = allUsers.find((u) => u.id === agentId) ?? {};
-    const fields = subs.reduce(
-      (acc, sub) => {
-        const f = extractFields(sub);
-        for (const key of Object.keys(acc)) {
-          acc[key] += f[key] ?? 0;
-        }
-        return acc;
-      },
-      Object.fromEntries(breakdownDefs.map((b) => [b.field, 0]))
-    );
-
-    const total = computeTotal(fields);
-    const breakdown = breakdownDefs.map((b) => ({ label: b.label, value: fields[b.field] }));
-
-    return {
-      agentId,
-      agentName: user.name || user.displayName || nameByAgent.get(agentId) || 'Agent',
-      photoURL: user.photoURL ?? null,
-      total,
-      breakdown,
-    };
-  });
-
-  return rows
-    .filter((r) => r.total > 0)
-    .sort((a, b) => b.total - a.total)
-    .map((r, i) => ({ ...r, rank: i + 1 }));
-}
+// Rows that fit the frame without a half-clipped last row (same depth as the
+// ranked panel's podium + tail).
+const MAX_ROWS = 8;
 
 const PROSPECTING_BREAKDOWN = [
-  { label: 'names', field: 'totalNewNames' },
-  { label: 'calls', field: 'totalTelAttempts' },
+  { label: 'names', field: 'names' },
+  { label: 'calls', field: 'calls' },
 ];
 
 const CONVERSIONS_BREAKDOWN = [
-  { label: 'FFIs', field: 'ffiConducted' },
-  { label: 'CIs', field: 'ciConducted' },
+  { label: 'FFIs', field: 'ffi' },
+  { label: 'CIs', field: 'ci' },
 ];
 
-export default function WeeklyActivityPanel({ allSubmissions, allUsers }) {
+// One column: agents with a positive total, total desc then name asc (stable
+// ties), capped at MAX_ROWS, then ranked 1..n.
+function buildActivityAgents(entries, allUsers, totalField, breakdownDefs) {
+  const rows = [];
+  for (const e of entries) {
+    const counts = kioskActivityCounts(e);
+    // An entry without `activity` (written before the L-1b deploy) contributes nothing.
+    if (!counts || !e.agentId) continue;
+    const total = counts[totalField];
+    if (!(total > 0)) continue;
+    const user = allUsers.find((u) => u.id === e.agentId) ?? {};
+    rows.push({
+      agentId: e.agentId,
+      agentName: e.name || user.name || user.displayName || 'Agent',
+      photoURL: user.photoURL ?? null,
+      total,
+      breakdown: breakdownDefs.map((b) => ({ label: b.label, value: counts[b.field] })),
+    });
+  }
+  return rows
+    .sort((a, b) => b.total - a.total || String(a.agentName).localeCompare(String(b.agentName)))
+    .slice(0, MAX_ROWS)
+    .map((r, i) => ({ ...r, rank: i + 1 }));
+}
+
+/**
+ * WeeklyActivityPanel — this week's two-column Activity slide (canonical design:
+ * `RefWeeklyActivity`, docs/design-system/screens-v2/kiosk-refined-b.jsx).
+ *
+ * Reads the `week` entries of the branch's leaderboard aggregate
+ * (`leaderboards/{branchId}`), each carrying `activity: { names, calls, ffi, ci }`
+ * (FR Leaderboard amendment A1, D4). Two columns:
+ *   Prospecting — names + calls   |   Conversions — FFIs + CIs
+ * Each column drops agents with a zero total, sorts by total desc then name asc,
+ * and shows at most MAX_ROWS. A missing aggregate, or entries without `activity`
+ * (written before the L-1b deploy), show the empty state — never fake zeros.
+ *
+ * Props:
+ *   leaderboardAggregate — the aggregate doc data, or null when it does not exist
+ *   allUsers             — optional roster, used only for avatar photos
+ */
+export default function WeeklyActivityPanel({ leaderboardAggregate = null, allUsers = [] }) {
   const { prospecting, conversions } = useMemo(() => {
-    const weekSubs = filterSubmissionsByPeriod(allSubmissions, 'week');
-
-    const prosp = buildActivityAgents(
-      weekSubs,
-      allUsers,
-      (f) => (f.totalNewNames ?? 0) + (f.totalTelAttempts ?? 0),
-      PROSPECTING_BREAKDOWN
-    );
-
-    const conv = buildActivityAgents(
-      weekSubs,
-      allUsers,
-      (f) => (f.ffiConducted ?? 0) + (f.ciConducted ?? 0),
-      CONVERSIONS_BREAKDOWN
-    );
-
-    return { prospecting: prosp, conversions: conv };
-  }, [allSubmissions, allUsers]);
+    const entries = kioskPeriodEntries(leaderboardAggregate, 'week');
+    return {
+      prospecting: buildActivityAgents(entries, allUsers, 'prospecting', PROSPECTING_BREAKDOWN),
+      conversions: buildActivityAgents(entries, allUsers, 'conversions', CONVERSIONS_BREAKDOWN),
+    };
+  }, [leaderboardAggregate, allUsers]);
 
   return (
     <div className="w-full h-full flex flex-col p-10">
