@@ -18,6 +18,8 @@
 
 | Item | Severity | Track/Area | Deadline | Line |
 |---|---|---|---|---|
+| `functions/` npm audit: a NEW high advisory on `node-forge` (GHSA-86w9-cpqp-85rv, range `*`, pulled in via `firebase-admin`) fails the "Audit dependencies (functions/, high/critical)" step, so EVERY PR's `functions-tests` check is red regardless of change; blocks L-3 (#1048). npm's only fix is `firebase-admin@14.5.0` (major bump) (banked 2026-10-02, FR Leaderboard L-2 post-merge fill) | HIGH | CI / functions dependencies | — | see § functions/ npm audit: node-forge high advisory blocks functions-tests CI |
+| L-2 real-app staging sweep waived under Rule 13 (Kyron offline): the board pass (Activity / API / Apps) on the FR Leaderboard route has not been walked in the real app on a staging build (banked 2026-10-02, FR Leaderboard L-2 post-merge fill) | MEDIUM | FR redesign / verification | — | see § L-2 deferred real-app staging sweep (Rule 13 waiver) |
 | Sunday cron weekly drafts go stale: written once at Sun 23:00 TT and never re-aggregated when a day is edited later (staging week 2026-08-23: days 52 pts, draft 39 pts); unit and branch managers get no draft at all (banked 2026-10-01, FR Leaderboard L-1 Phase 1) | MEDIUM | Daily → weekly aggregator | — | see § Sunday cron weekly drafts go stale |
 | Production Leaderboard (Nexus) lists the agent above you twice when you sit at rank 9 (desktop): ranks 4–8 are shown, then the around-me cluster starts with rank 8 again. The FR Leaderboard was fixed in L-2 (banked 2026-10-01, FR Leaderboard L-2) | LOW | Leaderboard (Nexus) | — | see § Nexus leaderboard repeats rank 8 for a viewer at rank 9 |
 | FR Leaderboard "to pass" reads "0 apps" / "0 pts" when you are tied with the agent above (the tie is broken by API, then name); wording for a tie needs a ruling (banked 2026-10-01, FR Leaderboard L-2) | LOW | FR redesign / Leaderboard | — | see § FR Leaderboard to-pass on a tie |
@@ -8365,6 +8367,42 @@ Ledger API and Apps are not affected: they are dated per policy by `dateIssued`.
 **Options (needs a ruling, copy is design):** (a) keep as is; (b) say "Tied with [name] — [one more] to pass" (one more point / app / TTD 1); (c) hide the gap and show "Tied with [name]".
 
 **Falsification (Rule 23):** closed if the ranker stops breaking ties (equal values share a rank), which would change D7.
+
+## L-2 deferred real-app staging sweep (Rule 13 waiver)
+
+**Banked 2026-10-02 in the post-merge fill for #1047 (FR Leaderboard L-2). Severity: MEDIUM — deferred verification, not a known defect.**
+
+**Verification waived because** Kyron was offline and the dispatcher waived the real-app staging sweep for L-2 (PR comment https://github.com/Kelsean868/agencytrack/pull/1047#issuecomment-5945020361). **Evidence taken instead:** harness walk 131/131; harness width sweep, no new findings vs main; measured contrast; suite 8,195/8,195; CI green.
+
+**Unverified criterion (verbatim):**
+
+> Real-app width sweep on a local `--mode staging` build, signed in as the staging fixture agent, with the board pass (Activity / API / Apps) on the Leaderboard route — no new findings vs the W-4 re-run (14 findings on 2/24 routes, all parked).
+
+**Re-run:**
+
+1. Write the staging leaderboard doc (`staging_test` only): `node scripts/verification/fr-lb-l1-dryrun-staging.mjs --write`
+2. Build against staging: `npm run build -- --mode staging`
+3. Serve it: `npx vite preview --port 4173 --strictPort`
+4. Run the sweep: `node scripts/verification/fr-width-real-app.mjs --report docs/audits/fr-width-real-app-2026-10-02-l2.md`
+
+**Shortcut:** a ready staging build of the #1047 head exists on Kyron's PC at `C:\Projects\AgencyTrack-l2meas`, with the preview on port 4173.
+
+**Falsification (Rule 23):** closed when the report shows no new findings vs `docs/audits/fr-width-real-app-2026-10-01-w4.md` on the Leaderboard route with each of the three boards open.
+
+## functions/ npm audit: node-forge high advisory blocks functions-tests CI
+
+**Banked 2026-10-02 in the post-merge fill for #1047. Severity: HIGH. First seen 2026-10-02 on #1048 (FR Leaderboard L-3).**
+
+**Observed:** `npm audit --omit=dev --audit-level=high` in `functions/` (CI step "Audit dependencies (functions/, high/critical)", `.github/workflows/ci.yml`) now fails on GHSA-86w9-cpqp-85rv: `node-forge` RSA PKCS#1 v1.5 signature verification accepts extra nested DigestAlgorithm elements. Affected range `*` (all versions). `node-forge` arrives through `firebase-admin`. npm's only fix is `firebase-admin@14.5.0`, a major bump.
+
+**Impact:** every PR's `functions-tests` check fails at that step regardless of what the PR changes. #1048 (L-3) touches no `functions/` or package files and is blocked by it. `main` protection lists `functions-tests` as required, and CLAUDE.md forbids merging until it shows `SUCCESS`.
+
+**Options for Kyron:**
+
+- (a) A functions PR upgrading `firebase-admin` to 14.5.x, with the full functions tests and a functions deploy (human-merge, deploy-gated).
+- (b) A reviewed, time-boxed audit exception for this GHSA in `.github/workflows/ci.yml` (the comment above the step already names `continue-on-error: true` as the functions-only escape, to be said in the PR that adds it).
+
+**Falsification (Rule 23):** overturned if `npm audit --omit=dev` in `functions/` passes on a clean install of `main` (the advisory is withdrawn or a patched `node-forge` is published).
 
 ## Kiosk panels still on weekly submissions
 
