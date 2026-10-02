@@ -2263,3 +2263,29 @@ Three PRs, all work, no deploy needed. #1042 (`420fa3eb`): the `UnitFinancingRos
 Two PRs, no deploy needed. #1041 (W-3, tooling): `fr-width-real-app.mjs` signs in as the staging fixture agent on a local `--mode staging` build, aborts every write, and runs the W-1 probes on every FR agent route at 1024/1280/1366/1440/390 in both themes; pop-ups are closed with Escape, the weekly-report wizard is probed as its own screen, and the shell is restored after every route. #1043 (W-4) fixed the first run's findings. Kyron's re-run on W-4: 14 findings on 2/24 routes (down from 72 on 7), all parked kinds; that report is committed in this fill.
 
 **Next:** the fit-any-width queue is clear. The parked design items in #1040 and #1043 need Kyron's calls before any more width work.
+
+## Archived from CONTEXT.md - 2026-10-02 consolidated fill (PRs #1053, #1054)
+
+### Last updated - entry 3
+
+**FR Leaderboard L-1 SHIPPED and DEPLOYED (2026-10-01); #1045 (Rule 16(b) class: work).** #1045 `cb701eec` (merged `2026-10-01T22:04:48Z`; feature HEAD before squash `88df6dbc`): the branch leaderboard aggregate `leaderboards/{branchId}` now carries three metrics per agent and period - `periodApi` and `apps` from settled Life ledger policies dated by `dateIssued` (self/family left out), and `points` from activity (a week with a submitted report scores the report; any other week sums its daily entries; drafts are never read - Kyron's D5 ruling). Also `previousRanks` per board, doc-level `sources`, the `active === false` filter, and champions from the ledger + points. CJS twins `functions/lib/ledgerCredit.js` + `functions/lib/dayPoints.js` under cross-check tests. D7 tie order (board metric, then periodApi → apps → points, then name) confirmed by Kyron. **Deploy:** queried, live - `recomputeLeaderboardScheduled` updateTime `2026-10-01T22:08:56Z`, `recomputeLeaderboardOnDemand` `2026-10-01T22:08:54Z`, both ACTIVE, after the merge; dispatcher's manual run OK (229 policies, 36 daily queries, 7.7 s). Ledger: #1045 `cb701eec` work.
+
+### Current main HEAD - entry 3
+
+`cb701eec` (PR #1045 squash - FR Leaderboard L-1). Merged `2026-10-01T22:04:48Z`. **Deploy-gated trigger: fired** - `git diff --stat 4c79286a..cb701eec -- firestore.rules firestore.indexes.json storage.rules functions/` lists 6 `functions/` files (no rules, index or storage change). **Verdict, queried from Firebase:** both touched functions redeployed after the merge (`gcloud functions describe`: updateTime `22:08:54Z` / `22:08:56Z`, ACTIVE).
+
+### Active track - entry 3
+
+**FR Leaderboard three boards** (`docs/briefs/fr-leaderboard-three-boards-kickoff.md`): L-1 (#1045, aggregate) merged and deployed. **L-2** (FR Leaderboard client: Activity · API · Apps boards, human-merge) next - Phase 1 in progress; it must use the L-1 tie order. Then **L-3** (kiosk boards read the aggregate). Until L-2/L-3 ship: the FR champions strip calls points "activities", the FR and Nexus leaderboard copy still says "weekly reports", and the kiosk still ranks weekly-report API. Everything FR still sits behind the per-user agent opt-in (brief FR-D12).
+
+### Recently shipped rows (dropped when the #1054 row was added at the 5-row cap)
+
+| [#1045](https://github.com/Kelsean868/agencytrack/pull/1045) | `cb701eec` | **FR Leaderboard L-1 - three-board aggregate (deployed).** `leaderboards/{branchId}` entries gain `points` and `previousRanks` (doc gains `sources`); `periodApi` / `apps` now come from the policy ledger (settled Life, dated by `dateIssued`, self/family left out) and `points` from submitted reports or else daily entries (drafts never read). `active === false` users left out; champions from the ledger + points. CJS twins of the ledger credit rule and the day-points rule under cross-check tests; monotonicity mutation-verified; staging dry-run PASS with the seeded days cleaned up. FUs banked: stale Sunday drafts (MEDIUM); `rankForLeaderboard` unused, UTC load year, month-start Activity (LOW). |
+
+### Where we left off - PRIOR block (oldest)
+
+**PRIOR - 2026-10-01. FR Leaderboard L-1 merged and deployed: #1045 (squash `cb701eec`, merged `2026-10-01T22:04:48Z`; functions live `22:08Z`).**
+
+The leaderboard job now stores three scores per person and period: settled API and applications from the policy ledger, and activity points (the submitted report, else the week's daily entries; drafts are never read). Kyron confirmed the D7 tie order, kept the UTC-year bug banked (LOW), and kept the month-start rule, banked LOW (FOLLOW_UPS § Leaderboard month-start Activity reads 0). Dispatcher's first production run: 229 policies, 36 daily queries, 7.7 s.
+
+**Next:** L-2 (FR Leaderboard client, three boards) - Phase 1 now, then STOP and wait for dispatcher. Then L-3 (kiosk boards read the aggregate).
