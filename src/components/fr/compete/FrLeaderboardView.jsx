@@ -335,8 +335,12 @@ function YouBlock({ you, toPass, rankCols, share, period, asCard, onOpenTrophies
           ) : (
             <>
               <span className="text-[12px] font-bold text-ink-muted">{branchWide ? 'To pass the next agent in the branch' : 'To pass the next agent'}</span>
-              <span className="whitespace-nowrap font-display text-[24px] font-extrabold tabular-nums text-ink">{config.format(toPass.gap)}</span>
-              <span className="text-[13px] text-ink-muted">{toPass.aboveName ? `to pass ${toPass.aboveName} (#${toPass.aboveRank})` : `to pass #${toPass.aboveRank}`}</span>
+              <span className="whitespace-nowrap font-display text-[24px] font-extrabold tabular-nums text-ink">{config.format(toPass.tied ? 1 : toPass.gap)}</span>
+              <span className="text-[13px] text-ink-muted">
+                {toPass.tied
+                  ? (toPass.aboveName ? `Tied with ${toPass.aboveName} (#${toPass.aboveRank}) · 1 more to pass` : `Tied with #${toPass.aboveRank} · 1 more to pass`)
+                  : (toPass.aboveName ? `to pass ${toPass.aboveName} (#${toPass.aboveRank})` : `to pass #${toPass.aboveRank}`)}
+              </span>
               <span role="img" aria-label={`You are at ${Math.round(toPass.pct)}% of #${toPass.aboveRank}'s ${config.noun}`} className="block h-3 overflow-hidden rounded-full bg-fr-sunk">
                 <span className="block h-full rounded-full bg-fr-accent fr-glide-w" style={{ width: `${toPass.pct}%` }} />
               </span>
