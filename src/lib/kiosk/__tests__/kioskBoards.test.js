@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { kioskBoardRows, kioskPanelHasBoardRows, KIOSK_BOARD_PANELS } from '../kioskBoards';
+import {
+  kioskBoardRows, kioskPanelHasBoardRows, kioskPeriodEntries, kioskActivityCounts, KIOSK_BOARD_PANELS,
+} from '../kioskBoards';
 import { rankBoard } from '../../fr/leaderboardBoards';
 
 const entry = (agentId, name, periodApi, apps, points) => ({
@@ -59,7 +61,20 @@ describe('kioskPanelHasBoardRows', () => {
 
   it('is true when the panel\'s own period has a row with a value', () => {
     expect(kioskPanelHasBoardRows({ week: ROWS }, 'weekLeaderboards')).toBe(true);
-    expect(kioskPanelHasBoardRows({ week: ROWS }, 'weeklyActivity')).toBe(true);
+  });
+
+  it('weeklyActivity is shown when any week entry has a positive activity count', () => {
+    const withActivity = (activity) => ({ week: [{ ...entry('a', 'Ann', 0, 0, 0), activity }] });
+    expect(kioskPanelHasBoardRows(withActivity({ names: 0, calls: 0, ffi: 0, ci: 1 }), 'weeklyActivity')).toBe(true);
+    expect(kioskPanelHasBoardRows(withActivity({ names: 2, calls: 0, ffi: 0, ci: 0 }), 'weeklyActivity')).toBe(true);
+  });
+
+  it('weeklyActivity is hidden for zero counts, a missing `activity` (pre-L-1b) or no aggregate, even with points', () => {
+    const zero = { week: [{ ...entry('a', 'Ann', 100, 1, 80), activity: { names: 0, calls: 0, ffi: 0, ci: 0 } }] };
+    expect(kioskPanelHasBoardRows(zero, 'weeklyActivity')).toBe(false);
+    expect(kioskPanelHasBoardRows({ week: ROWS }, 'weeklyActivity')).toBe(false);
+    expect(kioskPanelHasBoardRows(null, 'weeklyActivity')).toBe(false);
+    expect(kioskPanelHasBoardRows({ mtd: [{ ...ROWS[0], activity: { names: 5, calls: 5, ffi: 5, ci: 5 } }] }, 'weeklyActivity')).toBe(false);
   });
 
   it('is false for a missing aggregate or a period with no rows', () => {
@@ -70,5 +85,37 @@ describe('kioskPanelHasBoardRows', () => {
 
   it('is false for a panel key that is not a board panel', () => {
     expect(kioskPanelHasBoardRows({ week: ROWS }, 'branchOverview')).toBe(false);
+  });
+});
+
+describe('kioskPeriodEntries', () => {
+  it('returns the raw array for the mapped period, unranked and unfiltered', () => {
+    expect(kioskPeriodEntries({ week: ROWS }, 'week')).toBe(ROWS);
+    expect(kioskPeriodEntries({ qtd: ROWS }, 'quarter')).toBe(ROWS);
+  });
+
+  it('returns [] for a missing aggregate, array or period', () => {
+    expect(kioskPeriodEntries(null, 'week')).toEqual([]);
+    expect(kioskPeriodEntries({}, 'week')).toEqual([]);
+    expect(kioskPeriodEntries({ week: ROWS }, 'decade')).toEqual([]);
+  });
+});
+
+describe('kioskActivityCounts', () => {
+  it('returns the four counts and both column totals', () => {
+    expect(kioskActivityCounts({ activity: { names: 4, calls: 10, ffi: 1, ci: 2 } })).toEqual({
+      names: 4, calls: 10, ffi: 1, ci: 2, prospecting: 14, conversions: 3,
+    });
+  });
+
+  it('returns null — never zeros — when the entry has no activity object', () => {
+    expect(kioskActivityCounts({})).toBeNull();
+    expect(kioskActivityCounts(null)).toBeNull();
+    expect(kioskActivityCounts({ activity: null })).toBeNull();
+  });
+
+  it('treats non-numeric counts as 0', () => {
+    expect(kioskActivityCounts({ activity: { names: 'x', calls: undefined, ffi: 2, ci: null } }))
+      .toMatchObject({ names: 0, calls: 0, ffi: 2, ci: 0, prospecting: 0, conversions: 2 });
   });
 });

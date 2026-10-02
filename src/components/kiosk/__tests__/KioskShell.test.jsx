@@ -50,7 +50,7 @@ const SUBS = [
 ];
 const USERS = [{ id: 'a1', role: 'agent', name: 'Alice' }];
 // FR Leaderboard L-3: the aggregate doc the five leaderboard panels read.
-const AGG_ENTRY = { agentId: 'a1', name: 'Alice', unitId: 'u1', unitName: 'Unit One', periodApi: 90000, apps: 5, points: 120, rank: 1, rankWithinUnit: 1 };
+const AGG_ENTRY = { agentId: 'a1', name: 'Alice', unitId: 'u1', unitName: 'Unit One', periodApi: 90000, apps: 5, points: 120, rank: 1, rankWithinUnit: 1, activity: { names: 4, calls: 10, ffi: 1, ci: 0 } };
 const AGG = { week: [AGG_ENTRY], mtd: [AGG_ENTRY], qtd: [AGG_ENTRY], ytd: [AGG_ENTRY] };
 const BOARD_PANELS = ['ytdLeaderboards', 'qtdLeaderboards', 'mtdLeaderboards', 'weekLeaderboards', 'weeklyActivity'];
 const AOM = { api: { agentUid: 'a1', agentName: 'Alice', achievementValue: 90000 } };
@@ -207,16 +207,17 @@ describe('KioskShell — leaderboard aggregate (FR Leaderboard L-3)', () => {
   });
 
   it('drops the five leaderboard panels when the aggregate has no rows with a value', async () => {
-    const zero = { ...AGG_ENTRY, periodApi: 0, apps: 0, points: 0 };
+    const zero = { ...AGG_ENTRY, periodApi: 0, apps: 0, points: 0, activity: { names: 0, calls: 0, ffi: 0, ci: 0 } };
     setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: { week: [zero], mtd: [zero], qtd: [zero], ytd: [zero] } });
     await mountShell();
     const seen = new Set(await collectRotation(16));
     for (const key of BOARD_PANELS) expect(seen).not.toContain(key);
   });
 
-  it('drops only the Activity panel when nobody has points but production exists', async () => {
-    const noPoints = { ...AGG_ENTRY, points: 0 };
-    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: { week: [noPoints], mtd: [noPoints], qtd: [noPoints], ytd: [noPoints] } });
+  it('drops only the Activity panel when no entry has activity counts but production exists', async () => {
+    // Also covers an aggregate written before L-1b: points present, no `activity`.
+    const { activity: _activity, ...noActivity } = AGG_ENTRY;
+    setData({ subs: SUBS, users: USERS, aom: AOM, aggregate: { week: [noActivity], mtd: [noActivity], qtd: [noActivity], ytd: [noActivity] } });
     await mountShell();
     const seen = new Set(await collectRotation(16));
     expect(seen).toContain('weekLeaderboards');
