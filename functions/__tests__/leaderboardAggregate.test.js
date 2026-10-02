@@ -83,11 +83,12 @@ const {
   computeAndWriteLeaderboards,
   priorWeekStartingString,
 } = _internals;
-const { ledgerCreditsByAgent, weekPointsByAgent } = require('../leaderboard/boardMetrics');
+const { ledgerCreditsByAgent, weekPointsByAgent, weekCountsByAgent } = require('../leaderboard/boardMetrics');
 
 const ctxOf = ({ policies = [], submissions = [], dailies = new Map() } = {}) => ({
   creditsByAgent: ledgerCreditsByAgent(policies),
   weekPointsByAgent: weekPointsByAgent(submissions, dailies),
+  weekCountsByAgent: weekCountsByAgent(submissions, dailies),
 });
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -284,7 +285,7 @@ describe('buildLeaderboardDoc', () => {
     expect(doc.sources).toEqual({ api: 'ledger', apps: 'ledger', points: 'activity' });
   });
 
-  test('each period entry has the consumer shape (L-1 adds points + previousRanks)', () => {
+  test('each period entry has the consumer shape (L-1 adds points + previousRanks; L-1b adds activity)', () => {
     const users = [mkAgent('a1', 'Alpha', 'south', 'u1'), mkUM('u1', 'UM', 'south')];
     const ctx = ctxOf({
       policies: [mkPolicy('p1', 'a1', '2026-05-11', 100)],
@@ -299,6 +300,7 @@ describe('buildLeaderboardDoc', () => {
       periodApi:      100,
       apps:           1,
       points:         10,
+      activity:       { names: 0, calls: 0, ffi: 0, ci: 1 },
       rank:           1,
       rankWithinUnit: 1,
       previousRank:   1,

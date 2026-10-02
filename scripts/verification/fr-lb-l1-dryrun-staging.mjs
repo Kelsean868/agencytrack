@@ -142,13 +142,21 @@ const money = (n) => Number(n || 0).toLocaleString('en-US', { minimumFractionDig
 function printTable(docs) {
   for (const [branchId, doc] of docs.entries()) {
     console.log(`\nBRANCH ${branchId}  sources=${JSON.stringify(doc.sources)}  skippedNoBranch=${JSON.stringify(doc.skippedNoBranch)}`);
-    console.log(`${pad('agent', 22)}${pad('period', 6)}${lpad('API (TTD)', 13)}${lpad('apps', 6)}${lpad('points', 8)}${lpad('rank', 6)}${lpad('inUnit', 8)}  previousRanks`);
+    console.log(`${pad('agent', 22)}${pad('period', 6)}${lpad('API (TTD)', 13)}${lpad('apps', 6)}${lpad('points', 8)}${lpad('names', 7)}${lpad('calls', 7)}${lpad('ffi', 5)}${lpad('ci', 5)}${lpad('rank', 6)}${lpad('inUnit', 8)}  previousRanks`);
+    // A1 stop: week points > 0 with all four counts 0 is a mapping bug — STOP and wait for dispatcher.
+    // (A week scored only by appointments/letters/etc. also lands here: read the row before ruling it a bug.)
+    for (const e of doc.week) {
+      const a = e.activity || {};
+      if (e.points > 0 && !(a.names || a.calls || a.ffi || a.ci)) {
+        console.log(`!! MAPPING BUG? ${e.name}: week points ${e.points} but names/calls/ffi/ci all 0 — check the source docs; STOP and wait for dispatcher if it is a mapping bug`);
+      }
+    }
     const ids = doc.week.map((e) => e.agentId);
     for (const id of ids) {
       for (const key of ['week', 'mtd', 'qtd', 'ytd']) {
         const e = doc[key].find((x) => x.agentId === id);
         const prev = e.previousRanks ? `act ${e.previousRanks.activity} · api ${e.previousRanks.api} · apps ${e.previousRanks.apps}` : '';
-        console.log(`${pad(key === 'week' ? e.name.slice(0, 21) : '', 22)}${pad(key, 6)}${lpad(money(e.periodApi), 13)}${lpad(e.apps, 6)}${lpad(e.points, 8)}${lpad(e.rank, 6)}${lpad(e.rankWithinUnit, 8)}  ${prev}`);
+        console.log(`${pad(key === 'week' ? e.name.slice(0, 21) : '', 22)}${pad(key, 6)}${lpad(money(e.periodApi), 13)}${lpad(e.apps, 6)}${lpad(e.points, 8)}${lpad(e.activity?.names ?? '—', 7)}${lpad(e.activity?.calls ?? '—', 7)}${lpad(e.activity?.ffi ?? '—', 5)}${lpad(e.activity?.ci ?? '—', 5)}${lpad(e.rank, 6)}${lpad(e.rankWithinUnit, 8)}  ${prev}`);
       }
     }
   }
